@@ -201,6 +201,21 @@
   .review .ra{display:flex;gap:14px;margin-top:10px}
   .review .ra button{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-weight:600;padding:0}
   .review .ra button:hover{color:var(--amber)}
+
+  /* shopping list */
+  .shopcat{margin-top:14px}
+  .shopcat h4{font-family:'Space Grotesk';font-size:12px;letter-spacing:.04em;color:var(--amber);text-transform:uppercase;margin-bottom:7px}
+  .shopitem{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:9px;margin-bottom:6px;cursor:pointer}
+  .shopitem .box{width:18px;height:18px;border-radius:5px;border:2px solid var(--line);flex-shrink:0;display:flex;
+    align-items:center;justify-content:center;font-size:12px;color:var(--ink);font-weight:800}
+  .shopitem.done .box{background:var(--moss);border-color:var(--moss)}
+  .shopitem.done .nm{text-decoration:line-through;color:var(--muted)}
+  .shopitem .nm{flex:1;font-size:14px;word-break:break-word}
+  .shopitem .qty{font-family:'JetBrains Mono';font-size:12px;color:var(--muted);white-space:nowrap}
+  .shoptools{display:flex;gap:16px;align-items:center;margin-top:12px}
+  .shoptools button{background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:0}
+  .shoptools button:hover{color:var(--amber)}
 </style>
 </head>
 <body>
@@ -295,6 +310,10 @@
   <section class="view" id="vWeek">
     <div class="card">
       <h2 class="sec disp">Ma semaine</h2>
+      <div style="margin-bottom:10px">
+        <label>Mots-clés / matériel dispo (optionnel)</label>
+        <input type="text" id="genKw" placeholder="ex. vélo d'appart, élastique, batch cooking, budget serré">
+      </div>
       <div class="genbar">
         <button class="add" id="genBtn" onclick="generateWeek()">Générer ma semaine</button>
         <span id="genState" class="ainote"></span>
@@ -310,6 +329,15 @@
     <div class="card">
       <h2 class="sec disp">Menus de la semaine</h2>
       <div id="menu"></div>
+    </div>
+
+    <div class="card" id="shopCard">
+      <h2 class="sec disp">Liste de courses</h2>
+      <div class="genbar">
+        <button class="add" id="shopBtn" onclick="generateShopping()">Générer depuis les menus</button>
+        <span id="shopState" class="ainote"></span>
+      </div>
+      <div id="shopOut"></div>
     </div>
   </section>
 
@@ -387,7 +415,7 @@
 <script>
 const HEIGHT_DEFAULT=1.85, START=120, GOAL=90, MODEL='claude-haiku-4-5';
 const DKEY='descente:data', CKEY='descente:config';
-let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], reviews:[], week:null, updatedAt:null};
+let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], reviews:[], genPrefs:'', shopping:null, week:null, updatedAt:null};
 let cfg={syncUrl:'', token:''};
 
 // ---------- built-in starter program (knee-safe, no equipment) ----------
@@ -429,6 +457,7 @@ function loadLocal(){
   if(!Array.isArray(state.waists)) state.waists=[];
   if(!Array.isArray(state.journal)) state.journal=[];
   if(!Array.isArray(state.reviews)) state.reviews=[];
+  if(typeof state.genPrefs!=='string') state.genPrefs='';
 }
 function saveLocal(){ try{localStorage.setItem(DKEY, JSON.stringify(state));}catch(e){} }
 async function mutate(){ state.updatedAt=new Date().toISOString(); saveLocal(); render(); push(); }
@@ -455,7 +484,7 @@ async function pull(){
     if(!r.ok) return;
     const remote=await r.json();
     if(remote && remote.updatedAt && (!state.updatedAt || remote.updatedAt>=state.updatedAt)){
-      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; if(!Array.isArray(state.reviews)) state.reviews=[]; saveLocal();
+      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; if(!Array.isArray(state.reviews)) state.reviews=[]; if(typeof state.genPrefs!=='string') state.genPrefs=''; saveLocal();
     }
   }catch(e){ console.warn('pull failed',e); }
 }
@@ -505,7 +534,7 @@ function render(){
       ghost.style.left=(gf*100)+'%';ghost.style.display='block';}else ghost.style.display='none';
   }else{rEl.textContent='—';eEl.textContent='—';ghost.style.display='none';}
 
-  renderMilestones(); renderWeekly(); renderChart(); renderWaist(); renderPain(); renderJournal(); renderReview(); renderHistory(); renderWeek();
+  renderMilestones(); renderWeekly(); renderChart(); renderWaist(); renderPain(); renderJournal(); renderReview(); renderHistory(); renderWeek(); renderShopping();
 }
 function renderChart(){
   const wrap=document.getElementById('chartWrap'),w=sortedW();
@@ -735,9 +764,15 @@ async function generateWeek(){
   const btn=document.getElementById('genBtn'),st=document.getElementById('genState');
   btn.disabled=true; st.innerHTML='<span class="spinner"></span> génération…';
   const cur=current(), rate=weeklyRate();
+  const kw=(document.getElementById('genKw').value||'').trim();
+  state.genPrefs=kw;
   const recentPain=state.workouts.slice(-6).map(w=>w.type+' (douleur '+w.pain+')').join(', ')||'aucune séance loggée';
-  const sys="Tu es un coach nutrition + sport. L'utilisateur, homme 30 ans 1m85, vise une perte de poids saine (objectif 90 kg). Contrainte genou : chondropathie patellaire — AUCUN exercice avec charge/flexion profonde du genou (pas de squat, fente, montée d'escalier, wall sit profond). Privilégie iso quadriceps genou tendu, haut du corps, gainage, cardio sans impact. Pas de matériel (maison), petit budget. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format : {\"program\":[{\"tag\":\"Jour A\",\"focus\":\"...\",\"exercises\":[{\"name\":\"...\",\"detail\":\"séries x reps\"}]}],\"menu\":[{\"day\":\"Lundi\",\"meals\":[{\"slot\":\"Matin\",\"text\":\"...\"},{\"slot\":\"Midi\",\"text\":\"...\"},{\"slot\":\"Soir\",\"text\":\"...\"}]}],\"note\":\"un conseil court\"}. 3 jours de programme, 7 jours de menus simples, riches en protéines, peu coûteux.";
-  const usr=`Poids actuel: ${cur??'?'} kg. Rythme récent: ${rate!==null?rate.toFixed(2)+' kg/sem':'inconnu'}. Retours genou récents: ${recentPain}. Génère ma semaine.`;
+  const wcm=currentWaist(), H=state.profile.height||HEIGHT_DEFAULT;
+  const waistTxt=wcm!=null?`${wcm} cm (ratio ${(wcm/(H*100)).toFixed(2)})`:'non renseigné';
+  const lastRev=(state.reviews||[]).slice().sort((a,b)=>b.weekKey.localeCompare(a.weekKey))[0];
+  const revTxt=lastRev?`Focus du dernier bilan: ${lastRev.ai.focus||'—'}. Auto-éval: ${JSON.stringify(lastRev.qcm||{})}.`:'Aucun bilan récent.';
+  const sys="Tu es un coach nutrition + sport. L'utilisateur, homme 30 ans 1m85, vise une perte de poids saine (objectif 90 kg). Contrainte genou ABSOLUE : chondropathie patellaire — AUCUN exercice avec charge/flexion profonde du genou (pas de squat, fente, montée d'escalier, wall sit profond). Privilégie iso quadriceps genou tendu, haut du corps, gainage, cardio sans impact. Par défaut sans matériel (maison) et petit budget. TRÈS IMPORTANT : prends en compte les mots-clés / le matériel fournis par l'utilisateur et adapte le programme et les menus en conséquence ; si un matériel est cité (ex. vélo), intègre-le de façon genou-safe (vélo = selle haute, faible résistance, sans forcer). Tiens compte du ressenti récent (douleurs, motivation, alimentation, focus du dernier bilan) pour ajuster l'intensité. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format : {\"program\":[{\"tag\":\"Jour A\",\"focus\":\"...\",\"exercises\":[{\"name\":\"...\",\"detail\":\"séries x reps\"}]}],\"menu\":[{\"day\":\"Lundi\",\"meals\":[{\"slot\":\"Matin\",\"text\":\"...\"},{\"slot\":\"Midi\",\"text\":\"...\"},{\"slot\":\"Soir\",\"text\":\"...\"}]}],\"note\":\"un conseil court\"}. 3 jours de programme, 7 jours de menus simples, riches en protéines, peu coûteux.";
+  const usr=`Poids actuel: ${cur??'?'} kg. Rythme récent: ${rate!==null?rate.toFixed(2)+' kg/sem':'inconnu'}. Tour de taille: ${waistTxt}. Retours genou récents: ${recentPain}. ${revTxt} Mots-clés / matériel à intégrer: ${kw||'aucun'}. Génère ma semaine.`;
   try{
     const r=await fetch(cfg.syncUrl.replace(/\/$/,'')+'/ai',{method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
@@ -751,6 +786,64 @@ async function generateWeek(){
   }catch(e){
     st.textContent='Échec : '+e.message; console.warn(e);
   }finally{ btn.disabled=false; setTimeout(()=>st.textContent='',4000); }
+}
+
+// ---------- shopping list ----------
+function fallbackShopping(menu){
+  const set=new Map();
+  menu.forEach(d=>(d.meals||[]).forEach(m=>{
+    (m.text||'').split(/[+,;]/).forEach(part=>{
+      const t=part.trim(); if(t.length<2) return;
+      const key=t.toLowerCase().replace(/^\d+\s*(g|kg|ml|cl|l)?\b\s*/,'').trim();
+      if(key && !set.has(key)) set.set(key,t);
+    });
+  }));
+  return [{name:'Liste (extraite des menus)', items:[...set.values()].map(name=>({name,qty:''}))}];
+}
+async function generateShopping(){
+  const menu=(state.week&&state.week.menu)||[];
+  const ss=document.getElementById('shopState');
+  if(!menu.length){ ss.textContent='Génère d\'abord ta semaine.'; setTimeout(()=>ss.textContent='',4000); return; }
+  const btn=document.getElementById('shopBtn');
+  btn.disabled=true; ss.innerHTML='<span class="spinner"></span> liste…';
+  const menuText=menu.map(d=>(d.meals||[]).map(m=>m.text).join('; ')).join(' ; ');
+  let cats=null;
+  if(synced()){
+    const sys="À partir des menus d'une semaine, fais une liste de courses consolidée et dédupliquée, avec des quantités approximatives pour la semaine, en français. Regroupe par catégories. Réponds UNIQUEMENT en JSON: {\"categories\":[{\"name\":\"Protéines\",\"items\":[{\"name\":\"Poulet\",\"qty\":\"~1 kg\"}]}]}. Catégories à utiliser si pertinent: Protéines, Féculents & céréales, Légumes & fruits, Produits laitiers & œufs, Épicerie & autres.";
+    try{
+      const r=await fetch(cfg.syncUrl.replace(/\/$/,'')+'/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
+        body:JSON.stringify({model:MODEL,max_tokens:1200,system:sys,messages:[{role:'user',content:'Menus de la semaine: '+menuText}]})});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const data=await r.json();
+      const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').replace(/```json|```/g,'').trim();
+      cats=JSON.parse(text).categories;
+    }catch(e){ console.warn(e); ss.textContent='IA indispo — liste simple'; }
+  }
+  if(!cats||!cats.length) cats=fallbackShopping(menu);
+  let i=0;
+  const categories=cats.map(c=>({name:c.name||'Liste',items:(c.items||[]).map(it=>({id:++i,name:(typeof it==='string'?it:it.name)||'',qty:(it&&it.qty)||'',done:false}))})).filter(c=>c.items.length);
+  state.shopping={generatedAt:new Date().toISOString(),categories};
+  if(!ss.textContent.startsWith('IA indispo')) ss.textContent='✓ liste prête';
+  btn.disabled=false; setTimeout(()=>ss.textContent='',4000);
+  await mutate();
+}
+function renderShopping(){
+  const out=document.getElementById('shopOut'); if(!out) return;
+  const sh=state.shopping;
+  if(!sh||!sh.categories||!sh.categories.length){ out.innerHTML='<div class="empty">Génère ta liste à partir des menus de la semaine.</div>'; return; }
+  const total=sh.categories.reduce((n,c)=>n+c.items.length,0), done=sh.categories.reduce((n,c)=>n+c.items.filter(i=>i.done).length,0);
+  out.innerHTML=sh.categories.map(c=>`<div class="shopcat"><h4>${esc(c.name)}</h4>${
+    c.items.map(it=>`<div class="shopitem ${it.done?'done':''}" onclick="toggleShopItem(${it.id})">
+      <span class="box">${it.done?'✓':''}</span><span class="nm">${esc(it.name)}</span>${it.qty?`<span class="qty">${esc(it.qty)}</span>`:''}</div>`).join('')
+  }</div>`).join('')+`<div class="shoptools"><span class="ainote" style="margin:0">${done}/${total} cochés</span>
+    <button onclick="uncheckShopping()">Tout décocher</button><button onclick="copyShopping()">Copier</button></div>`;
+}
+function toggleShopItem(id){ const sh=state.shopping; if(!sh)return; sh.categories.forEach(c=>c.items.forEach(it=>{if(it.id===id)it.done=!it.done;})); mutate(); }
+function uncheckShopping(){ const sh=state.shopping; if(!sh)return; sh.categories.forEach(c=>c.items.forEach(it=>it.done=false)); mutate(); }
+function copyShopping(){
+  const sh=state.shopping; if(!sh)return;
+  const txt=sh.categories.map(c=>c.name+'\n'+c.items.map(it=>'- '+it.name+(it.qty?' ('+it.qty+')':'')).join('\n')).join('\n\n');
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt); const ss=document.getElementById('shopState'); ss.textContent='copié ✓'; setTimeout(()=>ss.textContent='',2000); }
 }
 
 // ---------- weekly review ----------
@@ -886,7 +979,7 @@ function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='descente-data.json';a.click();
 }
-function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],reviews:[],week:null,updatedAt:null};saveLocal();render();} }
+function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],reviews:[],genPrefs:'',shopping:null,week:null,updatedAt:null};saveLocal();render();} }
 
 // ---------- init ----------
 (async()=>{
@@ -895,8 +988,9 @@ function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?'
   document.getElementById('tDate').value=todayISO();
   document.getElementById('cDate').value=todayISO();
   document.getElementById('jDate').value=todayISO();
+  document.getElementById('genKw').value=state.genPrefs||'';
   setBadge(); render();
-  await pull(); loadCfgInputs(); render();
+  await pull(); loadCfgInputs(); document.getElementById('genKw').value=state.genPrefs||''; render();
   if('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('service-worker.js'); }catch(e){} }
 })();
 </script>
