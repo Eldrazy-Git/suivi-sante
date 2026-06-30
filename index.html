@@ -211,6 +211,10 @@
 
   <!-- ============ VIEW: SUIVI ============ -->
   <section class="view on" id="vSuivi">
+    <div class="due" id="dueBanner" style="display:none">
+      <div class="txt"><b>Bilan de la semaine</b> — fais le point en 30 secondes.</div>
+      <button class="add" onclick="setView('Journal')">Faire le bilan</button>
+    </div>
     <div class="card hero">
       <div class="eyebrow">Poids actuel</div>
       <div class="readout">
@@ -347,6 +351,14 @@
 
   <!-- ============ VIEW: JOURNAL ============ -->
   <section class="view" id="vJournal">
+    <div class="card" id="reviewCard">
+      <h2 class="sec disp">Bilan de la semaine</h2>
+      <div class="rd" id="reviewWeek"></div>
+      <div class="chips" id="reviewStats" style="margin:8px 0"></div>
+      <div class="qcm" id="qcm"></div>
+      <div class="genbar" style="margin-top:6px"><button class="add" id="revBtn" onclick="generateReview()">Générer le bilan</button><span id="revState" class="ainote"></span></div>
+      <div id="reviewOut"></div>
+    </div>
     <div class="card">
       <h2 class="sec disp">Journal</h2>
       <div class="row" style="margin-bottom:0"><div class="field"><label>Date</label><input type="date" id="jDate"></div></div>
@@ -360,6 +372,7 @@
       <div class="note">Ces notes nourriront ton <b>bilan hebdo</b> — et feront de la bonne matière pour ton journal vidéo.</div>
     </div>
     <div class="card"><h2 class="sec disp">Mes notes</h2><div id="journalList"></div></div>
+    <div class="card"><h2 class="sec disp">Bilans précédents</h2><div id="reviewArchive"></div></div>
   </section>
 
   <nav class="tabs">
@@ -374,7 +387,7 @@
 <script>
 const HEIGHT_DEFAULT=1.85, START=120, GOAL=90, MODEL='claude-haiku-4-5';
 const DKEY='descente:data', CKEY='descente:config';
-let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], week:null, updatedAt:null};
+let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], reviews:[], week:null, updatedAt:null};
 let cfg={syncUrl:'', token:''};
 
 // ---------- built-in starter program (knee-safe, no equipment) ----------
@@ -415,6 +428,7 @@ function loadLocal(){
   if(!state.profile.height) state.profile.height=HEIGHT_DEFAULT;
   if(!Array.isArray(state.waists)) state.waists=[];
   if(!Array.isArray(state.journal)) state.journal=[];
+  if(!Array.isArray(state.reviews)) state.reviews=[];
 }
 function saveLocal(){ try{localStorage.setItem(DKEY, JSON.stringify(state));}catch(e){} }
 async function mutate(){ state.updatedAt=new Date().toISOString(); saveLocal(); render(); push(); }
@@ -441,7 +455,7 @@ async function pull(){
     if(!r.ok) return;
     const remote=await r.json();
     if(remote && remote.updatedAt && (!state.updatedAt || remote.updatedAt>=state.updatedAt)){
-      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; saveLocal();
+      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; if(!Array.isArray(state.reviews)) state.reviews=[]; saveLocal();
     }
   }catch(e){ console.warn('pull failed',e); }
 }
@@ -491,7 +505,7 @@ function render(){
       ghost.style.left=(gf*100)+'%';ghost.style.display='block';}else ghost.style.display='none';
   }else{rEl.textContent='—';eEl.textContent='—';ghost.style.display='none';}
 
-  renderMilestones(); renderWeekly(); renderChart(); renderWaist(); renderPain(); renderJournal(); renderHistory(); renderWeek();
+  renderMilestones(); renderWeekly(); renderChart(); renderWaist(); renderPain(); renderJournal(); renderReview(); renderHistory(); renderWeek();
 }
 function renderChart(){
   const wrap=document.getElementById('chartWrap'),w=sortedW();
@@ -695,6 +709,7 @@ function del(kind,id){
   if(kind==='w') state.weights=state.weights.filter(w=>w.id!==id);
   else if(kind==='c') state.waists=state.waists.filter(c=>c.id!==id);
   else if(kind==='j') state.journal=state.journal.filter(j=>j.id!==id);
+  else if(kind==='r') state.reviews=state.reviews.filter(r=>r.id!==id);
   else state.workouts=state.workouts.filter(t=>t.id!==id);
   mutate();
 }
@@ -738,6 +753,109 @@ async function generateWeek(){
   }finally{ btn.disabled=false; setTimeout(()=>st.textContent='',4000); }
 }
 
+// ---------- weekly review ----------
+const QCM=[
+  {key:'motivation', q:'Motivation cette semaine', opts:[['high','😀 Haute'],['ok','😐 Correcte'],['low','😣 En berne']]},
+  {key:'nutrition', q:'Alimentation', opts:[['good','👍 Tenue'],['mid','🤏 Moyenne'],['bad','👎 Difficile']]},
+  {key:'knee', q:'Genou', opts:[['calm','✅ Tranquille'],['some','⚠️ Douleurs'],['bad','🛑 Douloureux']]},
+  {key:'energy', q:'Énergie', opts:[['high','⚡ Bonne'],['mid','🔋 Moyenne'],['low','🪫 Basse']]}
+];
+let qcmSel={};
+function setQcm(k,v){ qcmSel[k]=(qcmSel[k]===v?null:v); renderQcm(); }
+function renderQcm(){
+  const el=document.getElementById('qcm'); if(!el) return;
+  el.innerHTML=QCM.map(it=>`<div class="q"><div class="ql">${it.q}</div><div class="opts">${
+    it.opts.map(([v,lab])=>`<button class="${qcmSel[it.key]===v?'on':''}" onclick="setQcm('${it.key}','${v}')">${lab}</button>`).join('')
+  }</div></div>`).join('');
+}
+function weekRange(ref){
+  const d=ref?new Date(ref+'T00:00:00'):new Date();
+  const day=(d.getDay()+6)%7, mon=new Date(d); mon.setDate(d.getDate()-day);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const iso=x=>x.toISOString().slice(0,10);
+  return {start:iso(mon), end:iso(sun), key:iso(mon)};
+}
+function weekStats(start,end){
+  const inWk=dt=>dt>=start&&dt<=end, sw=sortedW();
+  const weekW=sw.filter(w=>inWk(w.date)), priorW=sw.filter(w=>w.date<start);
+  let delta=null;
+  const endKg=weekW.length?weekW[weekW.length-1].kg:(sw.length?sw[sw.length-1].kg:null);
+  const startKg=priorW.length?priorW[priorW.length-1].kg:(weekW.length?weekW[0].kg:null);
+  if(endKg!=null&&startKg!=null) delta=endKg-startKg;
+  const sess=(state.workouts||[]).filter(s=>inWk(s.date));
+  const painAvg=sess.length?sess.reduce((a,b)=>a+(+b.pain),0)/sess.length:null;
+  const js=(state.journal||[]).filter(j=>inWk(j.date)&&j.mood); const mc={}; js.forEach(j=>mc[j.mood]=(mc[j.mood]||0)+1);
+  let mood=null,mx=0; for(const k in mc){ if(mc[k]>mx){mx=mc[k];mood=k;} }
+  return {delta,sess,painAvg,mood};
+}
+function reviewHtml(r,archive){
+  const c=r.stats||{};
+  const chips=[`<span class="chip">${c.deltaTxt||'—'}</span>`,`<span class="chip">${c.sessions??'—'} séances</span>`,`<span class="chip">douleur ${c.painAvg??'—'}</span>`].join('');
+  return `<div class="review"><div class="rh"><span class="rd">${fmtDate(r.range.start)} → ${fmtDate(r.range.end)}</span></div>
+    <div class="chips">${chips}</div>
+    <div class="rc">${esc(r.ai.summary||'')}${r.ai.win?'\n\n👍 '+esc(r.ai.win):''}${r.ai.focus?'\n🎯 '+esc(r.ai.focus):''}</div>
+    <div class="ra">${archive?'':'<button onclick="generateReview()">Régénérer</button>'}<button onclick="del('r',${r.id})">Supprimer</button></div></div>`;
+}
+function renderReview(){
+  const wk=weekRange(), wEl=document.getElementById('reviewWeek'); if(!wEl) return;
+  wEl.textContent='Semaine du '+fmtDate(wk.start)+' au '+fmtDate(wk.end);
+  const st=weekStats(wk.start,wk.end), moodTxt={good:'Humeur 😀',ok:'Humeur 😐',hard:'Humeur 😣'};
+  const chips=[`<span class="chip">${st.delta==null?'— poids':(st.delta<=0?'−':'+')+Math.abs(st.delta).toFixed(1)+' kg'}</span>`,
+    `<span class="chip">${st.sess.length} séance${st.sess.length>1?'s':''}</span>`,
+    `<span class="chip">douleur ${st.painAvg==null?'—':st.painAvg.toFixed(1)}</span>`];
+  if(st.mood) chips.push(`<span class="chip">${moodTxt[st.mood]}</span>`);
+  document.getElementById('reviewStats').innerHTML=chips.join('');
+  renderQcm();
+  const existing=(state.reviews||[]).find(r=>r.weekKey===wk.key);
+  document.getElementById('reviewOut').innerHTML=existing?reviewHtml(existing,false):'';
+  const arch=(state.reviews||[]).filter(r=>r.weekKey!==wk.key).sort((a,b)=>b.weekKey.localeCompare(a.weekKey));
+  document.getElementById('reviewArchive').innerHTML=arch.length?arch.map(r=>reviewHtml(r,true)).join(''):'<div class="empty">Tes bilans passés apparaîtront ici.</div>';
+  const b=document.getElementById('dueBanner'); if(b){const dow=new Date().getDay(); b.style.display=((dow===0||dow===6)&&!existing)?'flex':'none';}
+}
+function fallbackReview(st,deltaTxt,q){
+  let s=`Cette semaine : ${deltaTxt}, ${st.sess.length} séance(s)`;
+  if(st.painAvg!=null) s+=`, douleur genou moyenne ${st.painAvg.toFixed(1)}/2`;
+  s+='.';
+  if(st.delta!=null&&st.delta<0) s+=' Bonne dynamique, le poids descend.';
+  else if(st.delta!=null&&st.delta>0) s+=' Léger rebond — regarde la tendance sur plusieurs semaines plutôt que le chiffre.';
+  const win=st.sess.length>0?`${st.sess.length} séance(s) bouclée(s) malgré le genou.`:'Tu as tenu ton suivi.';
+  let focus='Vise une pesée et 2-3 séances la semaine prochaine.';
+  if(q&&q.knee==='bad') focus='Genou sensible : allège, reste sur iso quadriceps et haut du corps.';
+  else if(q&&q.nutrition==='bad') focus='Côté assiette : plus de protéines, moins de sucres liquides.';
+  return {summary:s,win,focus};
+}
+async function generateReview(){
+  const wk=weekRange(), st=weekStats(wk.start,wk.end);
+  const deltaTxt=st.delta==null?'—':(st.delta<=0?'−':'+')+Math.abs(st.delta).toFixed(1)+' kg';
+  const painAvg=st.painAvg==null?'—':st.painAvg.toFixed(1);
+  const stats={deltaTxt, sessions:st.sess.length, painAvg};
+  const inWk=dt=>dt>=wk.start&&dt<=wk.end;
+  const jnotes=(state.journal||[]).filter(j=>inWk(j.date)).map(j=>`${fmtDate(j.date)} [${j.mood||'-'}] ${j.text||''}`);
+  const snotes=st.sess.filter(s=>s.note).map(s=>`${fmtDate(s.date)} ${s.type}: ${s.note}`);
+  const qcmTxt=QCM.map(i=>i.q+': '+(qcmSel[i.key]?i.opts.find(o=>o[0]===qcmSel[i.key])[1]:'—')).join(' | ');
+  const btn=document.getElementById('revBtn'), ss=document.getElementById('revState');
+  btn.disabled=true; ss.innerHTML='<span class="spinner"></span> bilan…';
+  let ai=null;
+  if(synced()){
+    const sys="Tu es un coach bienveillant, concret et honnête (jamais flagorneur). Rédige le bilan hebdo d'un utilisateur qui perd du poids (objectif 90 kg) avec un genou fragile (chondropathie patellaire). 3-4 phrases à la 2e personne (tu), puis un point fort et UN focus concret pour la semaine prochaine. Réponds UNIQUEMENT en JSON: {\"summary\":\"...\",\"win\":\"...\",\"focus\":\"...\"}.";
+    const usr=`Stats: poids ${deltaTxt}, ${st.sess.length} séances, douleur genou moy ${painAvg}/2, humeur ${st.mood||'—'}. Auto-éval: ${qcmTxt}. Notes journal: ${jnotes.join(' // ')||'aucune'}. Ressentis séances: ${snotes.join(' // ')||'aucun'}.`;
+    try{
+      const r=await fetch(cfg.syncUrl.replace(/\/$/,'')+'/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
+        body:JSON.stringify({model:MODEL,max_tokens:600,system:sys,messages:[{role:'user',content:usr}]})});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const data=await r.json();
+      const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').replace(/```json|```/g,'').trim();
+      ai=JSON.parse(text);
+    }catch(e){ console.warn(e); ss.textContent='IA indispo — bilan local'; }
+  }
+  if(!ai) ai=fallbackReview(st,deltaTxt,qcmSel);
+  const review={id:Date.now(),date:todayISO(),weekKey:wk.key,range:{start:wk.start,end:wk.end},stats,qcm:{...qcmSel},ai};
+  state.reviews=(state.reviews||[]).filter(r=>r.weekKey!==wk.key); state.reviews.push(review);
+  qcmSel={}; if(ss.textContent==='') ss.textContent='✓ bilan enregistré';
+  btn.disabled=false; setTimeout(()=>ss.textContent='',4000);
+  await mutate();
+}
+
 // ---------- settings ----------
 function loadCfgInputs(){
   document.getElementById('cfgUrl').value=cfg.syncUrl||'';
@@ -768,7 +886,7 @@ function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='descente-data.json';a.click();
 }
-function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],week:null,updatedAt:null};saveLocal();render();} }
+function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],reviews:[],week:null,updatedAt:null};saveLocal();render();} }
 
 // ---------- init ----------
 (async()=>{
