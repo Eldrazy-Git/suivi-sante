@@ -132,6 +132,75 @@
   nav.tabs button.on{color:var(--amber)}
   .view{display:none} .view.on{display:block}
   footer{text-align:center;font-size:11px;color:var(--muted);margin-top:18px;line-height:1.6}
+
+  /* milestones on gauge */
+  .track .tick{position:absolute;top:23px;width:2px;height:12px;background:var(--line);transform:translateX(-50%)}
+  .palier{margin-top:8px;font-size:12px;color:var(--muted)}
+  .palier b{color:var(--amber);font-family:'JetBrains Mono';font-weight:800}
+  .palier.hit{color:var(--moss)} .palier.hit b{color:var(--moss)}
+
+  /* weekly bilan */
+  .bilan{display:flex;gap:10px;flex-wrap:wrap}
+  .bilan .b{flex:1;min-width:72px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+  .bilan .b .k{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+  .bilan .b .v{font-family:'JetBrains Mono';font-weight:800;font-size:18px;margin-top:3px}
+  .verdict{margin-top:12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .verdict .led{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+  /* waist */
+  .waistrow{display:flex;gap:10px;align-items:flex-end;margin-bottom:6px}
+  .waistrow .big2{font-family:'JetBrains Mono';font-weight:800;font-size:30px;line-height:1}
+  .waistrow .u{color:var(--muted);font-family:'JetBrains Mono';font-weight:700;font-size:14px}
+  .waistrow .ratio{margin-left:auto;text-align:right;font-size:11px;color:var(--muted)}
+  .waistrow .ratio b{display:block;font-family:'JetBrains Mono';font-size:16px;font-weight:800}
+  svg.mini{width:100%;height:80px;display:block;overflow:visible;margin-top:8px}
+
+  /* knee pain insight */
+  .painbar{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:13px}
+  .painbar .lab{flex:0 0 118px;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .painbar .bar{flex:1;height:10px;border-radius:5px;background:var(--panel2);overflow:hidden}
+  .painbar .bar i{display:block;height:100%;border-radius:5px}
+  .painbar .val{flex:0 0 60px;text-align:right;font-family:'JetBrains Mono';font-weight:700;font-size:11px;color:var(--muted)}
+
+  /* journal */
+  textarea{width:100%;background:var(--ink);border:1px solid var(--line);color:var(--paper);border-radius:10px;
+    padding:11px 12px;font-family:'Inter';font-size:14px;line-height:1.5;resize:vertical;min-height:84px}
+  textarea:focus{outline:none;border-color:var(--amber)}
+  .moodsel{display:flex;gap:8px;margin:10px 0}
+  .moodsel button{flex:1;background:var(--ink);border:1px solid var(--line);color:var(--muted);border-radius:10px;
+    padding:9px;font-family:'Space Grotesk';font-weight:600;font-size:13px;cursor:pointer}
+  .moodsel button.on{border-color:var(--amber);color:var(--paper);background:var(--panel2)}
+  .jentry{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:10px}
+  .jentry .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .jentry .jd{font-family:'JetBrains Mono';font-size:11px;color:var(--muted)}
+  .jentry .jm{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700}
+  .jm.good{background:rgba(127,176,105,.18);color:var(--moss)}
+  .jm.ok{background:rgba(232,162,61,.18);color:var(--amber)}
+  .jm.hard{background:rgba(210,103,74,.20);color:var(--clay)}
+  .jentry .jt{font-size:14px;white-space:pre-wrap;word-break:break-word}
+
+  /* weekly review */
+  .due{background:linear-gradient(90deg,rgba(232,162,61,.16),rgba(232,162,61,.04));border:1px solid var(--amber);
+    border-radius:14px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+  .due .txt{flex:1;font-size:13px;line-height:1.4}
+  .due .txt b{color:var(--amber)}
+  .qcm{margin-top:14px}
+  .qcm .q{margin-bottom:12px}
+  .qcm .q .ql{font-size:13px;font-weight:600;margin-bottom:6px}
+  .qcm .opts{display:flex;gap:6px;flex-wrap:wrap}
+  .qcm .opts button{flex:1;min-width:78px;background:var(--ink);border:1px solid var(--line);color:var(--muted);
+    border-radius:9px;padding:8px;font-family:'Inter';font-weight:600;font-size:12px;cursor:pointer}
+  .qcm .opts button.on{border-color:var(--amber);color:var(--paper);background:var(--panel2)}
+  .review{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+  .review .rh{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .review .rd{font-family:'JetBrains Mono';font-size:11px;color:var(--muted)}
+  .review .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .review .chip{font-family:'JetBrains Mono';font-size:11px;font-weight:700;background:var(--ink);border:1px solid var(--line);
+    border-radius:6px;padding:3px 8px;color:var(--paper)}
+  .review .rc{font-size:14px;white-space:pre-wrap;word-break:break-word;line-height:1.55}
+  .review .ra{display:flex;gap:14px;margin-top:10px}
+  .review .ra button{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-weight:600;padding:0}
+  .review .ra button:hover{color:var(--amber)}
 </style>
 </head>
 <body>
@@ -150,10 +219,12 @@
       </div>
       <div class="track">
         <div class="railbg"></div><div class="fill" id="fill"></div>
+        <div id="ticks"></div>
         <div class="ghost" id="ghost"></div><div class="node" id="node"></div>
         <div class="cap l">120<small>Départ</small></div><div class="cap r">90<small>Objectif</small></div>
       </div>
       <div class="pct"><b id="pct">0%</b> du chemin vers 90 kg parcouru</div>
+      <div class="palier" id="palier"></div>
     </div>
 
     <div class="stats">
@@ -162,10 +233,16 @@
       <div class="stat"><div class="k">Objectif vers</div><div class="v" id="eta" style="font-size:15px">—</div><div class="s">à ce rythme</div></div>
     </div>
 
+    <div class="card" id="weeklyCard">
+      <h2 class="sec disp">Bilan de la semaine</h2>
+      <div id="weekly"></div>
+    </div>
+
     <div class="card">
       <div class="toggle">
         <button id="tabW" class="on" onclick="setForm('w')">Pesée</button>
         <button id="tabT" onclick="setForm('t')">Séance</button>
+        <button id="tabC" onclick="setForm('c')">Taille</button>
       </div>
       <div id="formW">
         <div class="row">
@@ -183,6 +260,9 @@
             </select></div>
           <div class="field"><label>Durée (min)</label><input type="number" id="tMin" placeholder="25" inputmode="numeric"></div>
         </div>
+        <div class="row" style="margin-bottom:8px">
+          <div class="field" style="flex:1 1 100%"><label>Ressenti (optionnel)</label><input type="text" id="tNote" placeholder="ex. genou ok, bonne énergie"></div>
+        </div>
         <div class="row">
           <div class="field"><label>Date</label><input type="date" id="tDate"></div>
           <div class="field"><label>Douleur genou</label>
@@ -190,10 +270,20 @@
           <button class="add" onclick="addWorkout()">Enregistrer</button>
         </div>
       </div>
+      <div id="formC" style="display:none">
+        <div class="row">
+          <div class="field"><label>Date</label><input type="date" id="cDate"></div>
+          <div class="field"><label>Tour de taille (cm)</label><input type="number" step="0.5" id="cCm" placeholder="104" inputmode="decimal"></div>
+          <button class="add" onclick="addWaist()">Enregistrer</button>
+        </div>
+        <div class="note">Mesure au niveau du nombril, le matin, sans serrer. 1×/semaine ou tous les 15 jours suffit.</div>
+      </div>
       <div class="note">Pèse-toi <b>1×/semaine</b>, le matin à jeun, le même jour. C'est la tendance qui compte, pas le chiffre d'un jour.</div>
     </div>
 
     <div class="card"><h2 class="sec disp">Tendance du poids</h2><div id="chartWrap"></div></div>
+    <div class="card" id="waistCard"><h2 class="sec disp">Tour de taille</h2><div id="waistWrap"></div></div>
+    <div class="card" id="painCard"><h2 class="sec disp">Genou — où ça tire</h2><div id="painWrap"></div></div>
     <div class="card"><h2 class="sec disp">Historique</h2><div class="log" id="history"></div></div>
   </section>
 
@@ -255,9 +345,27 @@
     </div>
   </section>
 
+  <!-- ============ VIEW: JOURNAL ============ -->
+  <section class="view" id="vJournal">
+    <div class="card">
+      <h2 class="sec disp">Journal</h2>
+      <div class="row" style="margin-bottom:0"><div class="field"><label>Date</label><input type="date" id="jDate"></div></div>
+      <div class="moodsel" id="jMood">
+        <button data-m="good" onclick="pickMood('good')">😀 Ça va</button>
+        <button data-m="ok" onclick="pickMood('ok')">😐 Moyen</button>
+        <button data-m="hard" onclick="pickMood('hard')">😣 Dur</button>
+      </div>
+      <textarea id="jText" placeholder="Ton ressenti : séance, motivation, genou, alimentation, énergie…"></textarea>
+      <div class="row" style="margin-top:10px"><button class="add" onclick="addJournal()">Ajouter au journal</button></div>
+      <div class="note">Ces notes nourriront ton <b>bilan hebdo</b> — et feront de la bonne matière pour ton journal vidéo.</div>
+    </div>
+    <div class="card"><h2 class="sec disp">Mes notes</h2><div id="journalList"></div></div>
+  </section>
+
   <nav class="tabs">
     <button id="nSuivi" class="on" onclick="setView('Suivi')"><span class="ic">📉</span>Suivi</button>
     <button id="nWeek" onclick="setView('Week')"><span class="ic">🗓️</span>Ma semaine</button>
+    <button id="nJournal" onclick="setView('Journal')"><span class="ic">📓</span>Journal</button>
     <button id="nSet" onclick="setView('Set')"><span class="ic">⚙️</span>Réglages</button>
   </nav>
 
@@ -266,7 +374,7 @@
 <script>
 const HEIGHT_DEFAULT=1.85, START=120, GOAL=90, MODEL='claude-haiku-4-5';
 const DKEY='descente:data', CKEY='descente:config';
-let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], week:null, updatedAt:null};
+let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], week:null, updatedAt:null};
 let cfg={syncUrl:'', token:''};
 
 // ---------- built-in starter program (knee-safe, no equipment) ----------
@@ -305,6 +413,8 @@ function loadLocal(){
   try{const c=localStorage.getItem(CKEY); if(c) cfg=JSON.parse(c);}catch(e){}
   if(!state.profile) state.profile={height:HEIGHT_DEFAULT};
   if(!state.profile.height) state.profile.height=HEIGHT_DEFAULT;
+  if(!Array.isArray(state.waists)) state.waists=[];
+  if(!Array.isArray(state.journal)) state.journal=[];
 }
 function saveLocal(){ try{localStorage.setItem(DKEY, JSON.stringify(state));}catch(e){} }
 async function mutate(){ state.updatedAt=new Date().toISOString(); saveLocal(); render(); push(); }
@@ -331,7 +441,7 @@ async function pull(){
     if(!r.ok) return;
     const remote=await r.json();
     if(remote && remote.updatedAt && (!state.updatedAt || remote.updatedAt>=state.updatedAt)){
-      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; saveLocal();
+      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; saveLocal();
     }
   }catch(e){ console.warn('pull failed',e); }
 }
@@ -341,6 +451,10 @@ const todayISO=()=>new Date().toISOString().slice(0,10);
 const fmtDate=iso=>new Date(iso+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});
 const sortedW=()=>[...state.weights].sort((a,b)=>a.date.localeCompare(b.date));
 const current=()=>{const w=sortedW();return w.length?w[w.length-1].kg:null;};
+const sortedC=()=>[...(state.waists||[])].sort((a,b)=>a.date.localeCompare(b.date));
+const currentWaist=()=>{const c=sortedC();return c.length?c[c.length-1].cm:null;};
+const daysAgo=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);};
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function weeklyRate(){
   const w=sortedW(); if(w.length<2) return null;
   const p=w.slice(-6).map(e=>({x:new Date(e.date+'T00:00:00').getTime()/86400000,y:e.kg}));
@@ -377,13 +491,20 @@ function render(){
       ghost.style.left=(gf*100)+'%';ghost.style.display='block';}else ghost.style.display='none';
   }else{rEl.textContent='—';eEl.textContent='—';ghost.style.display='none';}
 
-  renderChart(); renderHistory(); renderWeek();
+  renderMilestones(); renderWeekly(); renderChart(); renderWaist(); renderPain(); renderJournal(); renderHistory(); renderWeek();
 }
 function renderChart(){
   const wrap=document.getElementById('chartWrap'),w=sortedW();
   if(w.length<2){wrap.innerHTML='<div class="empty">Ajoute au moins 2 pesées pour voir ta courbe.</div>';return;}
   const W=600,H=150,pad=8,bottom=18;
-  const xs=w.map(e=>new Date(e.date+'T00:00:00').getTime()),minX=Math.min(...xs),maxX=Math.max(...xs);
+  const realXs=w.map(e=>new Date(e.date+'T00:00:00').getTime());
+  const cur=current(), rate=weeklyRate();
+  let proj=null;
+  if(rate!==null && rate<-0.03 && cur>GOAL){
+    const weeks=Math.min((cur-GOAL)/Math.abs(rate),104);
+    proj={x:realXs[realXs.length-1]+weeks*7*86400000, y:GOAL};
+  }
+  const minX=Math.min(...realXs), maxX=proj?Math.max(...realXs,proj.x):Math.max(...realXs);
   const ys=w.map(e=>e.kg);let minY=Math.min(...ys,GOAL),maxY=Math.max(...ys);
   const pY=(maxY-minY)*0.15+0.5;minY-=pY;maxY+=pY;
   const sx=v=>pad+((v-minX)/((maxX-minX)||1))*(W-2*pad);
@@ -393,28 +514,130 @@ function renderChart(){
   const area=line+` L${pts.at(-1)[0].toFixed(1)} ${(H-bottom)} L${pts[0][0].toFixed(1)} ${(H-bottom)} Z`;
   const gY=sy(GOAL);
   const dots=pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="#E8A23D" stroke="#0E1614" stroke-width="2"/>`).join('');
+  let projSvg='', rightLbl=`<text x="${W-pad}" y="${H-4}" fill="#7C918B" font-size="10" font-family="JetBrains Mono" text-anchor="end">${fmtDate(w.at(-1).date)}</text>`;
+  if(proj){
+    const lp=pts.at(-1), px=sx(proj.x), py=sy(proj.y), pd=new Date(proj.x);
+    projSvg=`<path d="M${lp[0].toFixed(1)} ${lp[1].toFixed(1)} L${px.toFixed(1)} ${py.toFixed(1)}" fill="none" stroke="#3FA9A0" stroke-width="2" stroke-dasharray="4 4"/>
+      <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3.5" fill="#3FA9A0" stroke="#0E1614" stroke-width="2"/>`;
+    rightLbl=`<text x="${W-pad}" y="${H-4}" fill="#3FA9A0" font-size="10" font-family="JetBrains Mono" text-anchor="end">~${pd.toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})}</text>`;
+  }
   wrap.innerHTML=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
     <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8A23D" stop-opacity="0.28"/><stop offset="1" stop-color="#E8A23D" stop-opacity="0"/></linearGradient></defs>
     <line x1="${pad}" y1="${gY.toFixed(1)}" x2="${W-pad}" y2="${gY.toFixed(1)}" stroke="#7FB069" stroke-width="1.5" stroke-dasharray="5 4"/>
-    <text x="${W-pad}" y="${(gY-5).toFixed(1)}" fill="#7FB069" font-size="10" font-family="JetBrains Mono" text-anchor="end">objectif 90</text>
+    <text x="${pad}" y="${(gY-5).toFixed(1)}" fill="#7FB069" font-size="10" font-family="JetBrains Mono">objectif 90</text>
     <path d="${area}" fill="url(#g)"/><path d="${line}" fill="none" stroke="#E8A23D" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-    ${dots}
+    ${projSvg}${dots}
     <text x="${pad}" y="${H-4}" fill="#7C918B" font-size="10" font-family="JetBrains Mono">${fmtDate(w[0].date)}</text>
-    <text x="${W-pad}" y="${H-4}" fill="#7C918B" font-size="10" font-family="JetBrains Mono" text-anchor="end">${fmtDate(w.at(-1).date)}</text>
-  </svg>`;
+    ${rightLbl}
+  </svg>${proj?'<div class="note" style="margin-top:8px">Ligne pointillée = projection vers 90 kg à ton rythme actuel.</div>':''}`;
+}
+function renderMilestones(){
+  const cur=current();
+  const ticks=[];
+  for(let m=GOAL+5;m<START;m+=5){ const f=(START-m)/(START-GOAL); ticks.push(`<div class="tick" style="left:${(f*100).toFixed(2)}%"></div>`); }
+  document.getElementById('ticks').innerHTML=ticks.join('');
+  const pEl=document.getElementById('palier');
+  if(cur===null){ pEl.textContent=''; pEl.className='palier'; return; }
+  if(cur<=GOAL){ pEl.className='palier hit'; pEl.innerHTML='🎉 Objectif <b>90 kg</b> atteint !'; return; }
+  const w=sortedW(); let crossed=null;
+  if(w.length>=2){ const prev=w[w.length-2].kg; for(let m=GOAL+5;m<START;m+=5){ if(prev>m && cur<=m) crossed=Math.max(crossed||0,m); } }
+  if(crossed!==null){ pEl.className='palier hit'; pEl.innerHTML=`🎉 Palier franchi : <b>${crossed} kg</b> !`; return; }
+  let target=Math.floor((cur-0.001)/5)*5; if(target<GOAL) target=GOAL;
+  pEl.className='palier';
+  pEl.innerHTML=`Prochain palier : <b>${target} kg</b> · plus que <b>${(cur-target).toFixed(1)} kg</b>`;
+}
+function renderWeekly(){
+  const el=document.getElementById('weekly'), w=sortedW();
+  let deltaTxt='—', deltaCls='';
+  if(w.length>=2){ const d=w[w.length-1].kg-w[w.length-2].kg; deltaTxt=(d<=0?'−':'+')+Math.abs(d).toFixed(1)+' kg'; deltaCls=d<=0?'good':'bad'; }
+  const since=daysAgo(7), recent=(state.workouts||[]).filter(s=>s.date>=since), sessions=recent.length;
+  const painAvg=sessions?(recent.reduce((s,x)=>s+(+x.pain),0)/sessions):null;
+  const rate=weeklyRate();
+  let led='#7C918B', txt='Pas encore assez de pesées pour juger la tendance.';
+  if(rate!==null){
+    if(rate<=-0.4){led='#7FB069';txt='Bon rythme — tu es dans les temps. 👌';}
+    else if(rate<-0.05){led='#E8A23D';txt='Ça descend, mais doucement. Continue.';}
+    else if(rate<0.1){led='#E8A23D';txt='Stable sur cette période.';}
+    else {led='#D2674A';txt='Léger rebond — rien de grave, on garde le cap.';}
+  }
+  el.innerHTML=`<div class="bilan">
+    <div class="b"><div class="k">Depuis dern. pesée</div><div class="v ${deltaCls}">${deltaTxt}</div></div>
+    <div class="b"><div class="k">Séances 7j</div><div class="v">${sessions}</div></div>
+    <div class="b"><div class="k">Douleur moy 7j</div><div class="v">${painAvg===null?'—':painAvg.toFixed(1)}</div></div>
+  </div>
+  <div class="verdict"><span class="led" style="background:${led}"></span><span>${txt}</span></div>`;
+}
+function renderWaist(){
+  const wrap=document.getElementById('waistWrap'), c=sortedC(), cur=currentWaist(), H=state.profile.height||HEIGHT_DEFAULT;
+  if(!c.length){ wrap.innerHTML='<div class="empty">Ajoute ta première mesure via l\'onglet « Taille » plus haut. Souvent plus parlant que la balance.</div>'; return; }
+  const ratio=cur/(H*100), targetCm=Math.round(H*50);
+  let col='var(--moss)', rtxt='sain'; if(ratio>=0.6){col='var(--clay)';rtxt='à risque';} else if(ratio>=0.5){col='var(--amber)';rtxt='élevé';}
+  const deltaC=cur-c[0].cm;
+  let chart='';
+  if(c.length>=2){
+    const W=600,Hh=80,pad=6;
+    const xs=c.map(e=>new Date(e.date+'T00:00:00').getTime()),minX=Math.min(...xs),maxX=Math.max(...xs);
+    const ys=c.map(e=>e.cm);let minY=Math.min(...ys,targetCm),maxY=Math.max(...ys);const pY=(maxY-minY)*0.15+0.5;minY-=pY;maxY+=pY;
+    const sx=v=>pad+((v-minX)/((maxX-minX)||1))*(W-2*pad), sy=v=>pad+(1-(v-minY)/((maxY-minY)||1))*(Hh-2*pad);
+    const pts=c.map(e=>[sx(new Date(e.date+'T00:00:00').getTime()),sy(e.cm)]);
+    const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    const tY=sy(targetCm), dots=pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="#3FA9A0" stroke="#0E1614" stroke-width="2"/>`).join('');
+    chart=`<svg class="mini" viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none">
+      <line x1="${pad}" y1="${tY.toFixed(1)}" x2="${W-pad}" y2="${tY.toFixed(1)}" stroke="#7FB069" stroke-width="1.2" stroke-dasharray="5 4"/>
+      <path d="${line}" fill="none" stroke="#3FA9A0" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${dots}</svg>`;
+  }
+  wrap.innerHTML=`<div class="waistrow"><span class="big2" style="color:${col}">${cur.toFixed(0)}</span><span class="u">cm</span>
+    <div class="ratio"><b style="color:${col}">${rtxt}</b>ratio ${ratio.toFixed(2)} · objectif &lt; ${targetCm} cm</div></div>
+    <div class="note" style="margin-top:2px">${deltaC<=0?'−':'+'}${Math.abs(deltaC).toFixed(0)} cm depuis le début${c.length<2?' · ajoute des mesures pour la courbe':''}</div>${chart}`;
+}
+function renderPain(){
+  const wrap=document.getElementById('painWrap'), ws=state.workouts||[];
+  if(!ws.length){ wrap.innerHTML='<div class="empty">Logue tes séances avec le niveau de douleur pour voir ce qui ménage ou réveille ton genou.</div>'; return; }
+  const groups={}; ws.forEach(s=>{(groups[s.type]=groups[s.type]||[]).push(+s.pain);});
+  const rows=Object.entries(groups).map(([type,arr])=>{const avg=arr.reduce((a,b)=>a+b,0)/arr.length;const col=avg<0.5?'#7FB069':avg<1.2?'#E8A23D':'#D2674A';return{type,avg,n:arr.length,col};}).sort((a,b)=>a.avg-b.avg);
+  const bars=rows.map(r=>`<div class="painbar"><span class="lab">${r.type}</span>
+    <span class="bar"><i style="width:${Math.max(4,(r.avg/2)*100).toFixed(0)}%;background:${r.col}"></i></span>
+    <span class="val">${r.avg.toFixed(1)} · ${r.n}×</span></div>`).join('');
+  const seq=[...ws].sort((a,b)=>a.date.localeCompare(b.date)).slice(-24);
+  let tl='';
+  if(seq.length>=2){
+    const W=600,Hh=70,pad=8;
+    const xs=seq.map(e=>new Date(e.date+'T00:00:00').getTime()),minX=Math.min(...xs),maxX=Math.max(...xs);
+    const sx=v=>pad+((v-minX)/((maxX-minX)||1))*(W-2*pad), sy=v=>pad+(1-(v/2))*(Hh-2*pad);
+    const pts=seq.map(e=>[sx(new Date(e.date+'T00:00:00').getTime()),sy(+e.pain),+e.pain]);
+    const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    const dots=pts.map(p=>{const c=p[2]<0.5?'#7FB069':p[2]<1.2?'#E8A23D':'#D2674A';return `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.2" fill="${c}" stroke="#0E1614" stroke-width="2"/>`;}).join('');
+    tl=`<div class="note" style="margin:12px 0 2px">Douleur dans le temps (0 = rien · 2 = forte)</div>
+      <svg class="mini" viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none"><path d="${line}" fill="none" stroke="#2A3D38" stroke-width="2"/>${dots}</svg>`;
+  }
+  wrap.innerHTML=bars+tl;
+}
+function renderJournal(){
+  const el=document.getElementById('journalList');
+  const j=[...(state.journal||[])].sort((a,b)=>b.date.localeCompare(a.date)||(b.id-a.id));
+  if(!j.length){ el.innerHTML='<div class="empty">Aucune note pour l\'instant. Écris ton premier ressenti ci-dessus.</div>'; return; }
+  const moodTxt={good:'😀 Ça va',ok:'😐 Moyen',hard:'😣 Dur'};
+  el.innerHTML=j.slice(0,60).map(e=>`<div class="jentry">
+    <div class="top"><span class="jd">${fmtDate(e.date)}</span>
+      ${e.mood?`<span class="jm ${e.mood}">${moodTxt[e.mood]||''}</span>`:''}
+      <button class="x" style="margin-left:auto" onclick="del('j',${e.id})">×</button></div>
+    ${e.text?`<div class="jt">${esc(e.text)}</div>`:''}</div>`).join('');
 }
 function renderHistory(){
   const el=document.getElementById('history');
-  const items=[...state.weights.map(w=>({...w,kind:'w'})),...state.workouts.map(t=>({...t,kind:'t'}))]
+  const items=[...state.weights.map(w=>({...w,kind:'w'})),...state.workouts.map(t=>({...t,kind:'t'})),...(state.waists||[]).map(c=>({...c,kind:'c'}))]
     .sort((a,b)=>b.date.localeCompare(a.date)||(b.id-a.id));
   if(!items.length){el.innerHTML='<div class="empty">Commence par ta pesée d\'aujourd\'hui.</div>';return;}
   el.innerHTML=items.slice(0,40).map(it=>{
     if(it.kind==='w') return `<div class="item"><span class="dot" style="background:#E8A23D"></span>
       <div class="main"><div class="t">Pesée</div><div class="d">${fmtDate(it.date)}</div></div>
       <span class="amt">${it.kg.toFixed(1)} kg</span><button class="x" onclick="del('w',${it.id})">×</button></div>`;
+    if(it.kind==='c') return `<div class="item"><span class="dot" style="background:#3FA9A0"></span>
+      <div class="main"><div class="t">Tour de taille</div><div class="d">${fmtDate(it.date)}</div></div>
+      <span class="amt">${it.cm.toFixed(0)} cm</span><button class="x" onclick="del('c',${it.id})">×</button></div>`;
     const pc=it.pain==0?'pain0':it.pain==1?'pain1':'pain2',pt=it.pain==0?'genou ok':it.pain==1?'gêne':'douleur';
     return `<div class="item"><span class="dot"></span><div class="main"><div class="t">${it.type}${it.min?' · '+it.min+' min':''}</div>
-      <div class="d">${fmtDate(it.date)}</div></div><span class="pain ${pc}">${pt}</span>
+      <div class="d">${fmtDate(it.date)}${it.note?' · '+esc(it.note):''}</div></div><span class="pain ${pc}">${pt}</span>
       <button class="x" onclick="del('t',${it.id})">×</button></div>`;
   }).join('');
 }
@@ -443,23 +666,48 @@ function addWeight(){
 }
 function addWorkout(){
   const type=document.getElementById('tType').value,min=parseInt(document.getElementById('tMin').value)||0,
-    date=document.getElementById('tDate').value||todayISO(),pain=parseInt(document.getElementById('tPain').value);
-  state.workouts.push({id:Date.now(),date,type,min,pain});
-  document.getElementById('tMin').value=''; mutate();
+    date=document.getElementById('tDate').value||todayISO(),pain=parseInt(document.getElementById('tPain').value),
+    note=(document.getElementById('tNote').value||'').trim();
+  state.workouts.push({id:Date.now(),date,type,min,pain,note});
+  document.getElementById('tMin').value=''; document.getElementById('tNote').value=''; mutate();
+}
+let jMoodSel=null;
+function pickMood(m){
+  jMoodSel = (jMoodSel===m? null : m);
+  document.querySelectorAll('#jMood button').forEach(b=>b.classList.toggle('on', b.dataset.m===jMoodSel));
+}
+function addJournal(){
+  const text=(document.getElementById('jText').value||'').trim(), date=document.getElementById('jDate').value||todayISO();
+  if(!text && !jMoodSel){ alert('Écris un ressenti ou choisis une humeur.'); return; }
+  state.journal.push({id:Date.now(),date,mood:jMoodSel,text});
+  document.getElementById('jText').value=''; jMoodSel=null;
+  document.querySelectorAll('#jMood button').forEach(b=>b.classList.remove('on'));
+  mutate();
+}
+function addWaist(){
+  const cm=parseFloat(document.getElementById('cCm').value),date=document.getElementById('cDate').value||todayISO();
+  if(isNaN(cm)||cm<40||cm>200){alert('Entre un tour de taille valide (cm).');return;}
+  state.waists=state.waists.filter(c=>c.date!==date);
+  state.waists.push({id:Date.now(),date,cm});
+  document.getElementById('cCm').value=''; mutate();
 }
 function del(kind,id){
   if(kind==='w') state.weights=state.weights.filter(w=>w.id!==id);
+  else if(kind==='c') state.waists=state.waists.filter(c=>c.id!==id);
+  else if(kind==='j') state.journal=state.journal.filter(j=>j.id!==id);
   else state.workouts=state.workouts.filter(t=>t.id!==id);
   mutate();
 }
 function setForm(t){
   document.getElementById('tabW').classList.toggle('on',t==='w');
   document.getElementById('tabT').classList.toggle('on',t==='t');
+  document.getElementById('tabC').classList.toggle('on',t==='c');
   document.getElementById('formW').style.display=t==='w'?'block':'none';
   document.getElementById('formT').style.display=t==='t'?'block':'none';
+  document.getElementById('formC').style.display=t==='c'?'block':'none';
 }
 function setView(v){
-  ['Suivi','Week','Set'].forEach(x=>{
+  ['Suivi','Week','Journal','Set'].forEach(x=>{
     document.getElementById('v'+x).classList.toggle('on',x===v);
     document.getElementById('n'+x).classList.toggle('on',x===v);
   });
@@ -520,13 +768,15 @@ function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='descente-data.json';a.click();
 }
-function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],week:null,updatedAt:null};saveLocal();render();} }
+function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],week:null,updatedAt:null};saveLocal();render();} }
 
 // ---------- init ----------
 (async()=>{
   loadLocal(); loadCfgInputs();
   document.getElementById('wDate').value=todayISO();
   document.getElementById('tDate').value=todayISO();
+  document.getElementById('cDate').value=todayISO();
+  document.getElementById('jDate').value=todayISO();
   setBadge(); render();
   await pull(); loadCfgInputs(); render();
   if('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('service-worker.js'); }catch(e){} }
