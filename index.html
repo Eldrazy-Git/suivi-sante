@@ -216,6 +216,17 @@
   .shoptools{display:flex;gap:16px;align-items:center;margin-top:12px}
   .shoptools button{background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;padding:0}
   .shoptools button:hover{color:var(--amber)}
+
+  /* exercise explain */
+  .day li.exo{cursor:pointer}
+  .day li.exo .exoinfo{margin-left:auto;color:var(--muted);font-weight:800;border:1px solid var(--line);border-radius:50%;
+    width:18px;height:18px;min-width:18px;display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+  .day li.exo:active{opacity:.6}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:18px}
+  .modalcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:440px;width:100%;max-height:80vh;overflow:auto;padding:18px}
+  .modalhead{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+  .modalhead span{font-family:'Space Grotesk';font-weight:700;font-size:16px;flex:1;line-height:1.3}
+  .exobody{font-size:14px;line-height:1.6;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -410,12 +421,19 @@
     <button id="nSet" onclick="setView('Set')"><span class="ic">⚙️</span>Réglages</button>
   </nav>
 
+  <div class="modal" id="exoModal" style="display:none" onclick="if(event.target===this)closeExo()">
+    <div class="modalcard">
+      <div class="modalhead"><span id="exoTitle" class="disp"></span><button class="x" onclick="closeExo()">×</button></div>
+      <div id="exoBody" class="exobody"></div>
+    </div>
+  </div>
+
   <footer>120 → 90 kg · genou : on renforce sans comprimer · données privées</footer>
 
 <script>
 const HEIGHT_DEFAULT=1.85, START=120, GOAL=90, MODEL='claude-haiku-4-5';
 const DKEY='descente:data', CKEY='descente:config';
-let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], reviews:[], genPrefs:'', shopping:null, week:null, updatedAt:null};
+let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], reviews:[], genPrefs:'', shopping:null, exoCache:{}, week:null, updatedAt:null};
 let cfg={syncUrl:'', token:''};
 
 // ---------- built-in starter program (knee-safe, no equipment) ----------
@@ -458,6 +476,7 @@ function loadLocal(){
   if(!Array.isArray(state.journal)) state.journal=[];
   if(!Array.isArray(state.reviews)) state.reviews=[];
   if(typeof state.genPrefs!=='string') state.genPrefs='';
+  if(!state.exoCache||typeof state.exoCache!=='object') state.exoCache={};
 }
 function saveLocal(){ try{localStorage.setItem(DKEY, JSON.stringify(state));}catch(e){} }
 async function mutate(){ state.updatedAt=new Date().toISOString(); saveLocal(); render(); push(); }
@@ -484,7 +503,7 @@ async function pull(){
     if(!r.ok) return;
     const remote=await r.json();
     if(remote && remote.updatedAt && (!state.updatedAt || remote.updatedAt>=state.updatedAt)){
-      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; if(!Array.isArray(state.reviews)) state.reviews=[]; if(typeof state.genPrefs!=='string') state.genPrefs=''; saveLocal();
+      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; if(!Array.isArray(state.reviews)) state.reviews=[]; if(typeof state.genPrefs!=='string') state.genPrefs=''; if(!state.exoCache||typeof state.exoCache!=='object') state.exoCache={}; saveLocal();
     }
   }catch(e){ console.warn('pull failed',e); }
 }
@@ -689,7 +708,7 @@ function renderWeek(){
   const menu=(state.week&&state.week.menu)||STARTER_MENU;
   document.getElementById('program').innerHTML=prog.map(d=>`<div class="day">
     <div class="h"><span class="tag">${d.tag||d.day||''}</span><span class="focus">${d.focus||''}</span></div>
-    <ul>${(d.exercises||[]).map(e=>`<li><span><b>${e.name}</b> ${e.detail?'· '+e.detail:''}</span></li>`).join('')}</ul></div>`).join('');
+    <ul>${(d.exercises||[]).map(e=>`<li class="exo" data-name="${esc(e.name)}" onclick="explainExo(this)"><span><b>${esc(e.name)}</b> ${e.detail?'· '+esc(e.detail):''}</span><span class="exoinfo">?</span></li>`).join('')}</ul></div>`).join('');
   document.getElementById('menu').innerHTML=menu.map(d=>`<div class="day">
     <div class="h"><span class="tag">${d.day||d.tag||''}</span></div>
     ${(d.meals||[]).map(m=>`<div class="meal"><b>${m.slot||''}</b>${m.text||''}</div>`).join('')}</div>`).join('');
@@ -786,6 +805,47 @@ async function generateWeek(){
   }catch(e){
     st.textContent='Échec : '+e.message; console.warn(e);
   }finally{ btn.disabled=false; setTimeout(()=>st.textContent='',4000); }
+}
+
+// ---------- exercise explanations ----------
+function normExo(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim(); }
+const EXO_DICT=[
+  [['quad set','contraction cuisse','contraction du quadriceps'],"Allongé ou assis, jambe tendue. Contracte le quadriceps pour plaquer l'arrière du genou vers le sol, sans plier la jambe. Tiens 5 s, relâche, recommence. Respire normalement.\n\n🦵 Genou : jambe tendue = zéro pression sur la rotule. C'est l'exercice idéal pour renforcer sans douleur."],
+  [['jambe tendue','leg raise','releve de jambe'],"Allongé sur le dos, une jambe pliée (pied au sol), l'autre tendue. Contracte la cuisse et lève la jambe tendue à ~30 cm, puis redescends lentement sans toucher le sol.\n\n🦵 Genou : garde la jambe parfaitement tendue, ne plie jamais le genou qui travaille."],
+  [['pont fessier','hip thrust','glute bridge'],"Allongé sur le dos, genoux pliés, pieds à plat. Pousse sur les talons et lève le bassin jusqu'à aligner épaules-hanches-genoux, serre les fessiers en haut 1 s, redescends.\n\n🦵 Genou : la force vient des fessiers, pas des genoux. Ne descends pas en position de squat."],
+  [['mollet','calf'],"Debout (appuie-toi à un mur pour l'équilibre), monte sur la pointe des pieds le plus haut possible, puis redescends lentement les talons.\n\n🦵 Genou : jambes quasi tendues, tout le mouvement vient des chevilles."],
+  [['pompe','push up','push-up'],"Mains un peu plus larges que les épaules, corps gainé en ligne droite. Plie les coudes pour descendre la poitrine, puis pousse pour remonter. Plus facile : mains surélevées sur une table, ou genoux au sol.\n\n🦵 Genou : exercice du haut du corps, aucun impact sur la rotule."],
+  [['rowing','rame','row','tirage'],"Penché en avant dos droit (ou un genou et une main sur une chaise), un sac lesté/bouteilles dans la main bras tendu. Tire le coude vers l'arrière en serrant l'omoplate, redescends lentement.\n\n🦵 Genou : jambes fixes et quasi tendues, tout le travail est dans le dos et les bras."],
+  [['dips','dip'],"Assis au bord d'une chaise stable, mains agrippées au bord de part et d'autre des hanches, fesses avancées dans le vide. Plie les coudes pour descendre, remonte en poussant.\n\n🦵 Genou : avance bien les pieds et garde les jambes tendues pour ne pas charger les genoux."],
+  [['elevation laterale','laterale','shoulder raise','elevations laterales'],"Debout, une bouteille dans chaque main le long du corps. Lève les bras tendus sur les côtés jusqu'à l'horizontale (hauteur des épaules), puis redescends lentement.\n\n🦵 Genou : exercice d'épaules, aucun impact articulaire."],
+  [['gainage lateral','side plank'],"Sur un avant-bras, corps sur le côté en ligne droite, hanches décollées du sol. Tiens la position sans laisser le bassin tomber, puis change de côté.\n\n🦵 Genou : exercice statique, aucune contrainte sur la rotule."],
+  [['planche','gainage frontal','gainage','plank'],"Sur les avant-bras et la pointe des pieds, corps gainé en ligne droite (abdos et fessiers serrés). Tiens la position sans creuser le bas du dos ni lever les fesses.\n\n🦵 Genou : statique, zéro stress sur la rotule."],
+  [['dead bug'],"Allongé sur le dos, bras tendus vers le plafond, genoux pliés à 90°. Descends lentement un bras et la jambe opposée (tendue) sans creuser le bas du dos, reviens, alterne.\n\n🦵 Genou : la jambe bouge à vide, sans charge — articulation préservée."],
+  [['shadow boxing','boxe','shadowboxing'],"Debout, gainé, enchaîne des coups de poing dans le vide (jab, direct, crochet) à rythme soutenu. Pivote depuis le buste et les hanches.\n\n🦵 Genou : reste sur place, sans sauts ni flexion profonde."]
+];
+function exoLookup(norm){ for(const [keys,txt] of EXO_DICT){ if(keys.some(k=>norm.includes(k))) return txt; } return null; }
+function openExo(title,bodyHtml){ document.getElementById('exoTitle').textContent=title; document.getElementById('exoBody').innerHTML=bodyHtml; document.getElementById('exoModal').style.display='flex'; }
+function setExoBody(html){ document.getElementById('exoBody').innerHTML=html; }
+function closeExo(){ document.getElementById('exoModal').style.display='none'; }
+async function explainExo(el){
+  const name=el.dataset.name||'';
+  openExo(name, '<span class="spinner"></span> explication…');
+  const key=normExo(name);
+  if(state.exoCache && state.exoCache[key]){ setExoBody(esc(state.exoCache[key])); return; }
+  const dict=exoLookup(key);
+  if(dict){ setExoBody(esc(dict)); return; }
+  if(!synced()){ setExoBody("Explication détaillée indisponible hors-ligne pour cet exercice.\nConnecte la synchro (Réglages) puis retape dessus."); return; }
+  try{
+    const sys="Tu es un coach sportif. Explique en français, simplement et concrètement, comment réaliser cet exercice de renforcement à domicile, pour une personne ayant une chondropathie patellaire (genou fragile). Donne : la position de départ, le mouvement, le tempo/respiration, et UN conseil de sécurité pour le genou. 4 à 6 lignes courtes, sans markdown ni listes à puces.";
+    const r=await fetch(cfg.syncUrl.replace(/\/$/,'')+'/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
+      body:JSON.stringify({model:MODEL,max_tokens:350,system:sys,messages:[{role:'user',content:'Exercice : '+name}]})});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();
+    if(!text) throw new Error('réponse vide');
+    state.exoCache=state.exoCache||{}; state.exoCache[key]=text;
+    setExoBody(esc(text)); saveLocal(); push();
+  }catch(e){ setExoBody("Impossible de récupérer l'explication ("+esc(e.message)+").\nRéessaie dans un instant."); }
 }
 
 // ---------- shopping list ----------
@@ -979,7 +1039,7 @@ function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='descente-data.json';a.click();
 }
-function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],reviews:[],genPrefs:'',shopping:null,week:null,updatedAt:null};saveLocal();render();} }
+function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],reviews:[],genPrefs:'',shopping:null,exoCache:{},week:null,updatedAt:null};saveLocal();render();} }
 
 // ---------- init ----------
 (async()=>{
