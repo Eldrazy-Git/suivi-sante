@@ -299,6 +299,12 @@
             <select id="tPain"><option value="0">Aucune</option><option value="1">Gênante</option><option value="2">Forte</option></select></div>
           <button class="add" onclick="addWorkout()">Enregistrer</button>
         </div>
+        <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">
+          <input type="file" accept=".tcx,.gpx" id="impFile" style="display:none" onchange="importWorkout(this)">
+          <button class="add ghostbtn" onclick="document.getElementById('impFile').click()">Importer un fichier (.tcx / .gpx)</button>
+          <span id="impState" class="ainote" style="display:block;margin-top:8px"></span>
+          <div class="note" style="margin-top:6px">Depuis Zepp : exporte l'entraînement en .tcx (le plus complet) ou .gpx.</div>
+        </div>
       </div>
       <div id="formC" style="display:none">
         <div class="row">
@@ -321,9 +327,11 @@
   <section class="view" id="vWeek">
     <div class="card">
       <h2 class="sec disp">Ma semaine</h2>
-      <div style="margin-bottom:10px">
-        <label>Mots-clés / matériel dispo (optionnel)</label>
-        <input type="text" id="genKw" placeholder="ex. vélo d'appart, élastique, batch cooking, budget serré">
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="flex:2 1 58%"><label>Mots-clés / matériel dispo (optionnel)</label>
+          <input type="text" id="genKw" placeholder="ex. vélo d'appart, élastique, batch cooking"></div>
+        <div class="field" style="flex:1 1 30%"><label>Budget courses/sem (€)</label>
+          <input type="number" id="genBudget" placeholder="35" inputmode="decimal"></div>
       </div>
       <div class="genbar">
         <button class="add" id="genBtn" onclick="generateWeek()">Générer ma semaine</button>
@@ -433,7 +441,7 @@
 <script>
 const HEIGHT_DEFAULT=1.85, START=120, GOAL=90, MODEL='claude-haiku-4-5';
 const DKEY='descente:data', CKEY='descente:config';
-let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], reviews:[], genPrefs:'', shopping:null, exoCache:{}, week:null, updatedAt:null};
+let state={profile:{height:HEIGHT_DEFAULT}, weights:[], workouts:[], waists:[], journal:[], reviews:[], genPrefs:'', genBudget:'', shopping:null, exoCache:{}, week:null, updatedAt:null};
 let cfg={syncUrl:'', token:''};
 
 // ---------- built-in starter program (knee-safe, no equipment) ----------
@@ -476,6 +484,7 @@ function loadLocal(){
   if(!Array.isArray(state.journal)) state.journal=[];
   if(!Array.isArray(state.reviews)) state.reviews=[];
   if(typeof state.genPrefs!=='string') state.genPrefs='';
+  if(typeof state.genBudget!=='string') state.genBudget='';
   if(!state.exoCache||typeof state.exoCache!=='object') state.exoCache={};
 }
 function saveLocal(){ try{localStorage.setItem(DKEY, JSON.stringify(state));}catch(e){} }
@@ -503,7 +512,7 @@ async function pull(){
     if(!r.ok) return;
     const remote=await r.json();
     if(remote && remote.updatedAt && (!state.updatedAt || remote.updatedAt>=state.updatedAt)){
-      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; if(!Array.isArray(state.reviews)) state.reviews=[]; if(typeof state.genPrefs!=='string') state.genPrefs=''; if(!state.exoCache||typeof state.exoCache!=='object') state.exoCache={}; saveLocal();
+      state=remote; if(!state.profile) state.profile={height:HEIGHT_DEFAULT}; if(!Array.isArray(state.waists)) state.waists=[]; if(!Array.isArray(state.journal)) state.journal=[]; if(!Array.isArray(state.reviews)) state.reviews=[]; if(typeof state.genPrefs!=='string') state.genPrefs=''; if(typeof state.genBudget!=='string') state.genBudget=''; if(!state.exoCache||typeof state.exoCache!=='object') state.exoCache={}; saveLocal();
     }
   }catch(e){ console.warn('pull failed',e); }
 }
@@ -517,6 +526,7 @@ const sortedC=()=>[...(state.waists||[])].sort((a,b)=>a.date.localeCompare(b.dat
 const currentWaist=()=>{const c=sortedC();return c.length?c[c.length-1].cm:null;};
 const daysAgo=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10);};
 const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDur=m=>{ m=Math.round(m||0); if(m<60) return m+' min'; const h=Math.floor(m/60), r=m%60; return h+' h'+(r?' '+r:''); };
 function weeklyRate(){
   const w=sortedW(); if(w.length<2) return null;
   const p=w.slice(-6).map(e=>({x:new Date(e.date+'T00:00:00').getTime()/86400000,y:e.kg}));
@@ -613,7 +623,8 @@ function renderWeekly(){
   let deltaTxt='—', deltaCls='';
   if(w.length>=2){ const d=w[w.length-1].kg-w[w.length-2].kg; deltaTxt=(d<=0?'−':'+')+Math.abs(d).toFixed(1)+' kg'; deltaCls=d<=0?'good':'bad'; }
   const since=daysAgo(7), recent=(state.workouts||[]).filter(s=>s.date>=since), sessions=recent.length;
-  const painAvg=sessions?(recent.reduce((s,x)=>s+(+x.pain),0)/sessions):null;
+  const painged=recent.filter(s=>typeof s.pain==='number');
+  const painAvg=painged.length?(painged.reduce((s,x)=>s+x.pain,0)/painged.length):null;
   const rate=weeklyRate();
   let led='#7C918B', txt='Pas encore assez de pesées pour juger la tendance.';
   if(rate!==null){
@@ -622,12 +633,14 @@ function renderWeekly(){
     else if(rate<0.1){led='#E8A23D';txt='Stable sur cette période.';}
     else {led='#D2674A';txt='Léger rebond — rien de grave, on garde le cap.';}
   }
+  const tMin=recent.reduce((a,b)=>a+(b.min||0),0), tKm=recent.reduce((a,b)=>a+(b.distanceKm||0),0), tCal=recent.reduce((a,b)=>a+(b.calories||0),0);
+  const trainLine=(tMin||tKm||tCal)?`<div class="ainote" style="margin-top:8px">Entraînement 7j : ${tMin?fmtDur(tMin):'—'}${tKm?' · '+(+tKm.toFixed(1))+' km':''}${tCal?' · '+Math.round(tCal)+' kcal':''}</div>`:'';
   el.innerHTML=`<div class="bilan">
     <div class="b"><div class="k">Depuis dern. pesée</div><div class="v ${deltaCls}">${deltaTxt}</div></div>
     <div class="b"><div class="k">Séances 7j</div><div class="v">${sessions}</div></div>
     <div class="b"><div class="k">Douleur moy 7j</div><div class="v">${painAvg===null?'—':painAvg.toFixed(1)}</div></div>
   </div>
-  <div class="verdict"><span class="led" style="background:${led}"></span><span>${txt}</span></div>`;
+  <div class="verdict"><span class="led" style="background:${led}"></span><span>${txt}</span></div>${trainLine}`;
 }
 function renderWaist(){
   const wrap=document.getElementById('waistWrap'), c=sortedC(), cur=currentWaist(), H=state.profile.height||HEIGHT_DEFAULT;
@@ -653,7 +666,7 @@ function renderWaist(){
     <div class="note" style="margin-top:2px">${deltaC<=0?'−':'+'}${Math.abs(deltaC).toFixed(0)} cm depuis le début${c.length<2?' · ajoute des mesures pour la courbe':''}</div>${chart}`;
 }
 function renderPain(){
-  const wrap=document.getElementById('painWrap'), ws=state.workouts||[];
+  const wrap=document.getElementById('painWrap'), ws=(state.workouts||[]).filter(s=>typeof s.pain==='number');
   if(!ws.length){ wrap.innerHTML='<div class="empty">Logue tes séances avec le niveau de douleur pour voir ce qui ménage ou réveille ton genou.</div>'; return; }
   const groups={}; ws.forEach(s=>{(groups[s.type]=groups[s.type]||[]).push(+s.pain);});
   const rows=Object.entries(groups).map(([type,arr])=>{const avg=arr.reduce((a,b)=>a+b,0)/arr.length;const col=avg<0.5?'#7FB069':avg<1.2?'#E8A23D':'#D2674A';return{type,avg,n:arr.length,col};}).sort((a,b)=>a.avg-b.avg);
@@ -697,10 +710,13 @@ function renderHistory(){
     if(it.kind==='c') return `<div class="item"><span class="dot" style="background:#3FA9A0"></span>
       <div class="main"><div class="t">Tour de taille</div><div class="d">${fmtDate(it.date)}</div></div>
       <span class="amt">${it.cm.toFixed(0)} cm</span><button class="x" onclick="del('c',${it.id})">×</button></div>`;
-    const pc=it.pain==0?'pain0':it.pain==1?'pain1':'pain2',pt=it.pain==0?'genou ok':it.pain==1?'gêne':'douleur';
-    return `<div class="item"><span class="dot"></span><div class="main"><div class="t">${it.type}${it.min?' · '+it.min+' min':''}</div>
-      <div class="d">${fmtDate(it.date)}${it.note?' · '+esc(it.note):''}</div></div><span class="pain ${pc}">${pt}</span>
-      <button class="x" onclick="del('t',${it.id})">×</button></div>`;
+    const extra=[]; if(it.distanceKm) extra.push(it.distanceKm+' km'); if(it.calories) extra.push(it.calories+' kcal'); if(it.avgHr) extra.push(it.avgHr+' bpm');
+    const sub=fmtDate(it.date)+(extra.length?' · '+extra.join(' · '):'')+(it.note?' · '+esc(it.note):'');
+    let badge;
+    if(typeof it.pain==='number'){ const pc=it.pain==0?'pain0':it.pain==1?'pain1':'pain2',pt=it.pain==0?'genou ok':it.pain==1?'gêne':'douleur'; badge=`<span class="pain ${pc}">${pt}</span>`; }
+    else badge='<span class="pain" style="background:rgba(63,169,160,.18);color:var(--teal)">importé</span>';
+    return `<div class="item"><span class="dot"></span><div class="main"><div class="t">${esc(it.type)}${it.min?' · '+it.min+' min':''}</div>
+      <div class="d">${sub}</div></div>${badge}<button class="x" onclick="del('t',${it.id})">×</button></div>`;
   }).join('');
 }
 function renderWeek(){
@@ -730,7 +746,15 @@ function addWorkout(){
   const type=document.getElementById('tType').value,min=parseInt(document.getElementById('tMin').value)||0,
     date=document.getElementById('tDate').value||todayISO(),pain=parseInt(document.getElementById('tPain').value),
     note=(document.getElementById('tNote').value||'').trim();
-  state.workouts.push({id:Date.now(),date,type,min,pain,note});
+  const w={id:Date.now(),date,type,min,pain,note};
+  if(pendingImport){
+    Object.assign(w,pendingImport,{source:'import'});
+    pendingImport=null;
+    const opt=document.getElementById('tTypeImport'); if(opt) opt.remove();
+    document.getElementById('tType').selectedIndex=0;
+    const im=document.getElementById('impState'); if(im) im.textContent='';
+  }
+  state.workouts.push(w);
   document.getElementById('tMin').value=''; document.getElementById('tNote').value=''; mutate();
 }
 let jMoodSel=null;
@@ -785,13 +809,15 @@ async function generateWeek(){
   const cur=current(), rate=weeklyRate();
   const kw=(document.getElementById('genKw').value||'').trim();
   state.genPrefs=kw;
+  const budget=(document.getElementById('genBudget').value||'').trim();
+  state.genBudget=budget;
   const recentPain=state.workouts.slice(-6).map(w=>w.type+' (douleur '+w.pain+')').join(', ')||'aucune séance loggée';
   const wcm=currentWaist(), H=state.profile.height||HEIGHT_DEFAULT;
   const waistTxt=wcm!=null?`${wcm} cm (ratio ${(wcm/(H*100)).toFixed(2)})`:'non renseigné';
   const lastRev=(state.reviews||[]).slice().sort((a,b)=>b.weekKey.localeCompare(a.weekKey))[0];
   const revTxt=lastRev?`Focus du dernier bilan: ${lastRev.ai.focus||'—'}. Auto-éval: ${JSON.stringify(lastRev.qcm||{})}.`:'Aucun bilan récent.';
-  const sys="Tu es un coach nutrition + sport. L'utilisateur, homme 30 ans 1m85, vise une perte de poids saine (objectif 90 kg). Contrainte genou ABSOLUE : chondropathie patellaire — AUCUN exercice avec charge/flexion profonde du genou (pas de squat, fente, montée d'escalier, wall sit profond). Privilégie iso quadriceps genou tendu, haut du corps, gainage, cardio sans impact. Par défaut sans matériel (maison) et petit budget. TRÈS IMPORTANT : prends en compte les mots-clés / le matériel fournis par l'utilisateur et adapte le programme et les menus en conséquence ; si un matériel est cité (ex. vélo), intègre-le de façon genou-safe (vélo = selle haute, faible résistance, sans forcer). Tiens compte du ressenti récent (douleurs, motivation, alimentation, focus du dernier bilan) pour ajuster l'intensité. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format : {\"program\":[{\"tag\":\"Jour A\",\"focus\":\"...\",\"exercises\":[{\"name\":\"...\",\"detail\":\"séries x reps\"}]}],\"menu\":[{\"day\":\"Lundi\",\"meals\":[{\"slot\":\"Matin\",\"text\":\"...\"},{\"slot\":\"Midi\",\"text\":\"...\"},{\"slot\":\"Soir\",\"text\":\"...\"}]}],\"note\":\"un conseil court\"}. 3 jours de programme, 7 jours de menus simples, riches en protéines, peu coûteux.";
-  const usr=`Poids actuel: ${cur??'?'} kg. Rythme récent: ${rate!==null?rate.toFixed(2)+' kg/sem':'inconnu'}. Tour de taille: ${waistTxt}. Retours genou récents: ${recentPain}. ${revTxt} Mots-clés / matériel à intégrer: ${kw||'aucun'}. Génère ma semaine.`;
+  const sys="Tu es un coach nutrition + sport. L'utilisateur, homme 30 ans 1m85, vise une perte de poids saine (objectif 90 kg). Contrainte genou ABSOLUE : chondropathie patellaire — AUCUN exercice avec charge/flexion profonde du genou (pas de squat, fente, montée d'escalier, wall sit profond). Privilégie iso quadriceps genou tendu, haut du corps, gainage, cardio sans impact. Par défaut sans matériel (maison) et petit budget. TRÈS IMPORTANT : prends en compte les mots-clés / le matériel fournis par l'utilisateur et adapte le programme et les menus en conséquence ; si un matériel est cité (ex. vélo), intègre-le de façon genou-safe (vélo = selle haute, faible résistance, sans forcer). Tiens compte du ressenti récent (douleurs, motivation, alimentation, focus du dernier bilan) pour ajuster l'intensité. Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format : {\"program\":[{\"tag\":\"Jour A\",\"focus\":\"...\",\"exercises\":[{\"name\":\"...\",\"detail\":\"séries x reps\"}]}],\"menu\":[{\"day\":\"Lundi\",\"meals\":[{\"slot\":\"Matin\",\"text\":\"...\"},{\"slot\":\"Midi\",\"text\":\"...\"},{\"slot\":\"Soir\",\"text\":\"...\"}]}],\"note\":\"un conseil court\"}. 3 jours de programme, 7 jours de menus simples, riches en protéines et peu coûteux. Si un budget hebdo est indiqué, respecte-le : ingrédients courants et prix d'ordre de grandeur d'un Intermarché en France (marques distributeur, œufs, légumineuses, poulet/dinde, poisson surgelé, produits de saison).";
+  const usr=`Poids actuel: ${cur??'?'} kg. Rythme récent: ${rate!==null?rate.toFixed(2)+' kg/sem':'inconnu'}. Tour de taille: ${waistTxt}. Retours genou récents: ${recentPain}. ${revTxt} Mots-clés / matériel à intégrer: ${kw||'aucun'}. Budget courses/semaine: ${budget?budget+' €':'non précisé'}. Génère ma semaine.`;
   try{
     const r=await fetch(cfg.syncUrl.replace(/\/$/,'')+'/ai',{method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
@@ -805,6 +831,85 @@ async function generateWeek(){
   }catch(e){
     st.textContent='Échec : '+e.message; console.warn(e);
   }finally{ btn.disabled=false; setTimeout(()=>st.textContent='',4000); }
+}
+
+// ---------- import workout (.tcx / .gpx) ----------
+function cleanSport(sport,notes){
+  const map={Biking:'Vélo',Running:'Course',Walking:'Marche',Hiking:'Randonnée',Swimming:'Natation',Other:'Autre'};
+  if(notes){ const n=notes.replace(/^\d{6,8}\s*/,'').trim(); if(n) return n; }
+  return map[sport]||sport||'Import';
+}
+function parseTcx(doc){
+  const g=(el,n)=>el.getElementsByTagNameNS('*',n);
+  const act=g(doc,'Activity')[0]; if(!act) return null;
+  const sport=act.getAttribute('Sport')||'';
+  const id=(g(act,'Id')[0]||{}).textContent||'';
+  const notes=(g(act,'Notes')[0]||{}).textContent||'';
+  let sec=0,dist=0,cal=0,maxhr=0;
+  for(const lap of g(act,'Lap')){
+    sec+=parseFloat((g(lap,'TotalTimeSeconds')[0]||{}).textContent||0);
+    dist+=parseFloat((g(lap,'DistanceMeters')[0]||{}).textContent||0);
+    cal+=parseFloat((g(lap,'Calories')[0]||{}).textContent||0);
+    const mx=g(lap,'MaximumHeartRateBpm')[0]; if(mx){const v=g(mx,'Value')[0]; if(v) maxhr=Math.max(maxhr,parseInt(v.textContent));}
+  }
+  let hrs=[],alts=[];
+  for(const tp of g(act,'Trackpoint')){
+    const hb=g(tp,'HeartRateBpm')[0]; if(hb){const v=g(hb,'Value')[0]; if(v) hrs.push(parseInt(v.textContent));}
+    const al=g(tp,'AltitudeMeters')[0]; if(al) alts.push(parseFloat(al.textContent));
+  }
+  let gain=0; for(let i=1;i<alts.length;i++){const d=alts[i]-alts[i-1]; if(d>0) gain+=d;}
+  const avgHr=hrs.length?Math.round(hrs.reduce((a,b)=>a+b,0)/hrs.length):null;
+  return {date:(id||'').slice(0,10),sport,notes,min:Math.round(sec/60),distanceKm:+(dist/1000).toFixed(2),
+    calories:cal?Math.round(cal):null,avgHr,maxHr:maxhr||(hrs.length?Math.max(...hrs):null),elevation:Math.round(gain)};
+}
+function parseGpx(doc){
+  const g=(el,n)=>el.getElementsByTagNameNS('*',n);
+  const trk=g(doc,'trk')[0], name=trk?((g(trk,'name')[0]||{}).textContent||''):'';
+  let coords=[],times=[],hrs=[],alts=[];
+  for(const p of g(doc,'trkpt')){
+    const lat=parseFloat(p.getAttribute('lat')),lon=parseFloat(p.getAttribute('lon'));
+    if(!isNaN(lat)&&!isNaN(lon)) coords.push([lat,lon]);
+    const t=g(p,'time')[0]; if(t) times.push(t.textContent);
+    const e=g(p,'ele')[0]; if(e) alts.push(parseFloat(e.textContent));
+    const hr=g(p,'hr')[0]; if(hr) hrs.push(parseInt(hr.textContent));
+  }
+  const hav=(a,b)=>{const R=6371000,r=Math.PI/180,dLa=(b[0]-a[0])*r,dLo=(b[1]-a[1])*r,x=Math.sin(dLa/2)**2+Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(x));};
+  let dist=0; for(let i=1;i<coords.length;i++) dist+=hav(coords[i-1],coords[i]);
+  let sec=0; if(times.length>=2) sec=(new Date(times[times.length-1])-new Date(times[0]))/1000;
+  let gain=0; for(let i=1;i<alts.length;i++){const d=alts[i]-alts[i-1]; if(d>0) gain+=d;}
+  const avgHr=hrs.length?Math.round(hrs.reduce((a,b)=>a+b,0)/hrs.length):null;
+  return {date:times[0]?times[0].slice(0,10):todayISO(),sport:'',notes:name,min:Math.round(sec/60),distanceKm:+(dist/1000).toFixed(2),
+    calories:null,avgHr,maxHr:hrs.length?Math.max(...hrs):null,elevation:Math.round(gain)};
+}
+let pendingImport=null;
+function importWorkout(input){
+  const file=input.files&&input.files[0]; if(!file) return;
+  const ss=document.getElementById('impState');
+  ss.innerHTML='<span class="spinner"></span> lecture…';
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const doc=new DOMParser().parseFromString(rd.result,'application/xml');
+      if(doc.getElementsByTagName('parsererror').length) throw new Error('XML illisible');
+      const isTcx=doc.getElementsByTagNameNS('*','TrainingCenterDatabase').length>0||doc.getElementsByTagNameNS('*','Activity').length>0;
+      const data=isTcx?parseTcx(doc):parseGpx(doc);
+      if(!data) throw new Error('format non reconnu');
+      const type=cleanSport(data.sport,data.notes);
+      // pré-remplir le formulaire Séance (pas de création automatique)
+      setForm('t');
+      const sel=document.getElementById('tType');
+      let opt=document.getElementById('tTypeImport');
+      if(!opt){ opt=document.createElement('option'); opt.id='tTypeImport'; sel.appendChild(opt); }
+      opt.value=type; opt.textContent=type; sel.value=type;
+      document.getElementById('tMin').value=data.min||'';
+      document.getElementById('tDate').value=data.date||todayISO();
+      pendingImport={distanceKm:data.distanceKm||null,calories:data.calories,avgHr:data.avgHr,maxHr:data.maxHr,elevation:data.elevation||null};
+      ss.textContent=`Lu : ${type} · ${data.distanceKm||0} km · ${data.min||0} min${data.calories!=null?' · '+data.calories+' kcal':''}${data.avgHr?' · '+data.avgHr+' bpm':''}. Choisis la douleur puis « Enregistrer ».`;
+    }catch(e){ ss.textContent='Échec : '+e.message; pendingImport=null; }
+    input.value='';
+  };
+  rd.onerror=()=>{ ss.textContent='Lecture du fichier impossible.'; };
+  rd.readAsText(file);
 }
 
 // ---------- exercise explanations ----------
@@ -867,42 +972,54 @@ async function generateShopping(){
   const btn=document.getElementById('shopBtn');
   btn.disabled=true; ss.innerHTML='<span class="spinner"></span> liste…';
   const menuText=menu.map(d=>(d.meals||[]).map(m=>m.text).join('; ')).join(' ; ');
-  let cats=null;
+  const budget=(state.genBudget||'').trim();
+  let cats=null, total='';
   if(synced()){
-    const sys="À partir des menus d'une semaine, fais une liste de courses consolidée et dédupliquée, avec des quantités approximatives pour la semaine, en français. Regroupe par catégories. Réponds UNIQUEMENT en JSON: {\"categories\":[{\"name\":\"Protéines\",\"items\":[{\"name\":\"Poulet\",\"qty\":\"~1 kg\"}]}]}. Catégories à utiliser si pertinent: Protéines, Féculents & céréales, Légumes & fruits, Produits laitiers & œufs, Épicerie & autres.";
+    const sys="À partir des menus d'une semaine, fais une liste de courses consolidée et dédupliquée, en français, avec pour chaque article une quantité approximative et un PRIX ESTIMÉ d'ordre de grandeur en Intermarché (France), marques distributeur. Donne aussi un total estimé. Ce sont des ordres de grandeur, pas des prix exacts. Regroupe par catégories. Réponds UNIQUEMENT en JSON: {\"total\":\"~30 €\",\"categories\":[{\"name\":\"Protéines\",\"items\":[{\"name\":\"Poulet\",\"qty\":\"~1 kg\",\"price\":\"~6 €\"}]}]}. Catégories si pertinent: Protéines, Féculents & céréales, Légumes & fruits, Produits laitiers & œufs, Épicerie & autres."
+      +(budget?` Essaie de rester sous ${budget} € pour la semaine ; si c'est difficile, propose les articles les plus économiques.`:'');
     try{
       const r=await fetch(cfg.syncUrl.replace(/\/$/,'')+'/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
-        body:JSON.stringify({model:MODEL,max_tokens:1200,system:sys,messages:[{role:'user',content:'Menus de la semaine: '+menuText}]})});
+        body:JSON.stringify({model:MODEL,max_tokens:1400,system:sys,messages:[{role:'user',content:'Menus de la semaine: '+menuText}]})});
       if(!r.ok) throw new Error('HTTP '+r.status);
       const data=await r.json();
       const text=(data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n').replace(/```json|```/g,'').trim();
-      cats=JSON.parse(text).categories;
+      const parsed=JSON.parse(text); cats=parsed.categories; total=parsed.total||'';
     }catch(e){ console.warn(e); ss.textContent='IA indispo — liste simple'; }
   }
   if(!cats||!cats.length) cats=fallbackShopping(menu);
   let i=0;
-  const categories=cats.map(c=>({name:c.name||'Liste',items:(c.items||[]).map(it=>({id:++i,name:(typeof it==='string'?it:it.name)||'',qty:(it&&it.qty)||'',done:false}))})).filter(c=>c.items.length);
-  state.shopping={generatedAt:new Date().toISOString(),categories};
+  const categories=cats.map(c=>({name:c.name||'Liste',items:(c.items||[]).map(it=>({id:++i,name:(typeof it==='string'?it:it.name)||'',qty:(it&&it.qty)||'',price:(it&&it.price)||'',done:false}))})).filter(c=>c.items.length);
+  state.shopping={generatedAt:new Date().toISOString(),categories,total,budget};
   if(!ss.textContent.startsWith('IA indispo')) ss.textContent='✓ liste prête';
   btn.disabled=false; setTimeout(()=>ss.textContent='',4000);
   await mutate();
 }
+function parseEuro(s){ if(s==null) return null; const m=String(s).replace(',','.').match(/(\d+(?:\.\d+)?)/); return m?parseFloat(m[1]):null; }
 function renderShopping(){
   const out=document.getElementById('shopOut'); if(!out) return;
   const sh=state.shopping;
   if(!sh||!sh.categories||!sh.categories.length){ out.innerHTML='<div class="empty">Génère ta liste à partir des menus de la semaine.</div>'; return; }
-  const total=sh.categories.reduce((n,c)=>n+c.items.length,0), done=sh.categories.reduce((n,c)=>n+c.items.filter(i=>i.done).length,0);
+  const cnt=sh.categories.reduce((n,c)=>n+c.items.length,0), done=sh.categories.reduce((n,c)=>n+c.items.filter(i=>i.done).length,0);
+  let budLine='';
+  if(sh.total){
+    const bud=parseEuro(sh.budget), tot=parseEuro(sh.total);
+    const led=(bud&&tot)?(tot<=bud?'#7FB069':'#E8A23D'):'#7C918B';
+    const cmp=(bud&&tot)?(tot<=bud?` · dans le budget (${bud} €) ✅`:` · au-dessus du budget (${bud} €) ⚠️`):'';
+    budLine=`<div class="verdict" style="margin-top:12px"><span class="led" style="background:${led}"></span><span>Total estimé : ${esc(sh.total)}${cmp}</span></div>`;
+  }
   out.innerHTML=sh.categories.map(c=>`<div class="shopcat"><h4>${esc(c.name)}</h4>${
     c.items.map(it=>`<div class="shopitem ${it.done?'done':''}" onclick="toggleShopItem(${it.id})">
-      <span class="box">${it.done?'✓':''}</span><span class="nm">${esc(it.name)}</span>${it.qty?`<span class="qty">${esc(it.qty)}</span>`:''}</div>`).join('')
-  }</div>`).join('')+`<div class="shoptools"><span class="ainote" style="margin:0">${done}/${total} cochés</span>
-    <button onclick="uncheckShopping()">Tout décocher</button><button onclick="copyShopping()">Copier</button></div>`;
+      <span class="box">${it.done?'✓':''}</span><span class="nm">${esc(it.name)}</span><span class="qty">${esc((it.qty||'')+(it.price?(it.qty?' · ':'')+it.price:''))}</span></div>`).join('')
+  }</div>`).join('')+budLine+`<div class="shoptools"><span class="ainote" style="margin:0">${done}/${cnt} cochés</span>
+    <button onclick="uncheckShopping()">Tout décocher</button><button onclick="copyShopping()">Copier</button></div>
+    ${sh.total?'<div class="note" style="margin-top:8px">Prix estimés (ordre de grandeur Intermarché) — à vérifier en rayon, ça varie.</div>':''}`;
 }
 function toggleShopItem(id){ const sh=state.shopping; if(!sh)return; sh.categories.forEach(c=>c.items.forEach(it=>{if(it.id===id)it.done=!it.done;})); mutate(); }
 function uncheckShopping(){ const sh=state.shopping; if(!sh)return; sh.categories.forEach(c=>c.items.forEach(it=>it.done=false)); mutate(); }
 function copyShopping(){
   const sh=state.shopping; if(!sh)return;
-  const txt=sh.categories.map(c=>c.name+'\n'+c.items.map(it=>'- '+it.name+(it.qty?' ('+it.qty+')':'')).join('\n')).join('\n\n');
+  let txt=sh.categories.map(c=>c.name+'\n'+c.items.map(it=>'- '+it.name+(it.qty?' — '+it.qty:'')+(it.price?' ('+it.price+')':'')).join('\n')).join('\n\n');
+  if(sh.total) txt+='\n\nTotal estimé : '+sh.total;
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt); const ss=document.getElementById('shopState'); ss.textContent='copié ✓'; setTimeout(()=>ss.textContent='',2000); }
 }
 
@@ -936,14 +1053,27 @@ function weekStats(start,end){
   const startKg=priorW.length?priorW[priorW.length-1].kg:(weekW.length?weekW[0].kg:null);
   if(endKg!=null&&startKg!=null) delta=endKg-startKg;
   const sess=(state.workouts||[]).filter(s=>inWk(s.date));
-  const painAvg=sess.length?sess.reduce((a,b)=>a+(+b.pain),0)/sess.length:null;
+  const pg=sess.filter(s=>typeof s.pain==='number');
+  const painAvg=pg.length?pg.reduce((a,b)=>a+b.pain,0)/pg.length:null;
   const js=(state.journal||[]).filter(j=>inWk(j.date)&&j.mood); const mc={}; js.forEach(j=>mc[j.mood]=(mc[j.mood]||0)+1);
   let mood=null,mx=0; for(const k in mc){ if(mc[k]>mx){mx=mc[k];mood=k;} }
-  return {delta,sess,painAvg,mood};
+  const sum=(f)=>sess.reduce((a,b)=>a+(f(b)||0),0);
+  const totalMin=sum(s=>s.min), totalKm=+sum(s=>s.distanceKm).toFixed(2), totalCal=Math.round(sum(s=>s.calories)), elev=Math.round(sum(s=>s.elevation));
+  const hrL=sess.map(s=>s.avgHr).filter(x=>typeof x==='number'&&x>0);
+  const avgHr=hrL.length?Math.round(hrL.reduce((a,b)=>a+b,0)/hrL.length):null;
+  const mhL=sess.map(s=>s.maxHr).filter(x=>typeof x==='number'&&x>0);
+  const maxHr=mhL.length?Math.max(...mhL):null;
+  return {delta,sess,painAvg,mood,totalMin,totalKm,totalCal,elev,avgHr,maxHr};
 }
 function reviewHtml(r,archive){
   const c=r.stats||{};
-  const chips=[`<span class="chip">${c.deltaTxt||'—'}</span>`,`<span class="chip">${c.sessions??'—'} séances</span>`,`<span class="chip">douleur ${c.painAvg??'—'}</span>`].join('');
+  const arr=[`<span class="chip">${c.deltaTxt||'—'}</span>`,`<span class="chip">${c.sessions??'—'} séances</span>`,`<span class="chip">douleur ${c.painAvg??'—'}</span>`];
+  if(c.totalMin) arr.push(`<span class="chip">⏱ ${fmtDur(c.totalMin)}</span>`);
+  if(c.totalKm) arr.push(`<span class="chip">📏 ${c.totalKm} km</span>`);
+  if(c.totalCal) arr.push(`<span class="chip">🔥 ${c.totalCal} kcal</span>`);
+  if(c.avgHr) arr.push(`<span class="chip">❤️ ${c.avgHr} bpm</span>`);
+  if(c.elev) arr.push(`<span class="chip">⛰ +${c.elev} m</span>`);
+  const chips=arr.join('');
   return `<div class="review"><div class="rh"><span class="rd">${fmtDate(r.range.start)} → ${fmtDate(r.range.end)}</span></div>
     <div class="chips">${chips}</div>
     <div class="rc">${esc(r.ai.summary||'')}${r.ai.win?'\n\n👍 '+esc(r.ai.win):''}${r.ai.focus?'\n🎯 '+esc(r.ai.focus):''}</div>
@@ -957,6 +1087,11 @@ function renderReview(){
     `<span class="chip">${st.sess.length} séance${st.sess.length>1?'s':''}</span>`,
     `<span class="chip">douleur ${st.painAvg==null?'—':st.painAvg.toFixed(1)}</span>`];
   if(st.mood) chips.push(`<span class="chip">${moodTxt[st.mood]}</span>`);
+  if(st.totalMin) chips.push(`<span class="chip">⏱ ${fmtDur(st.totalMin)}</span>`);
+  if(st.totalKm) chips.push(`<span class="chip">📏 ${st.totalKm} km</span>`);
+  if(st.totalCal) chips.push(`<span class="chip">🔥 ${st.totalCal} kcal</span>`);
+  if(st.avgHr) chips.push(`<span class="chip">❤️ ${st.avgHr} bpm</span>`);
+  if(st.elev) chips.push(`<span class="chip">⛰ +${st.elev} m</span>`);
   document.getElementById('reviewStats').innerHTML=chips.join('');
   renderQcm();
   const existing=(state.reviews||[]).find(r=>r.weekKey===wk.key);
@@ -981,17 +1116,18 @@ async function generateReview(){
   const wk=weekRange(), st=weekStats(wk.start,wk.end);
   const deltaTxt=st.delta==null?'—':(st.delta<=0?'−':'+')+Math.abs(st.delta).toFixed(1)+' kg';
   const painAvg=st.painAvg==null?'—':st.painAvg.toFixed(1);
-  const stats={deltaTxt, sessions:st.sess.length, painAvg};
+  const stats={deltaTxt, sessions:st.sess.length, painAvg, totalMin:st.totalMin, totalKm:st.totalKm, totalCal:st.totalCal, avgHr:st.avgHr, maxHr:st.maxHr, elev:st.elev};
   const inWk=dt=>dt>=wk.start&&dt<=wk.end;
   const jnotes=(state.journal||[]).filter(j=>inWk(j.date)).map(j=>`${fmtDate(j.date)} [${j.mood||'-'}] ${j.text||''}`);
   const snotes=st.sess.filter(s=>s.note).map(s=>`${fmtDate(s.date)} ${s.type}: ${s.note}`);
   const qcmTxt=QCM.map(i=>i.q+': '+(qcmSel[i.key]?i.opts.find(o=>o[0]===qcmSel[i.key])[1]:'—')).join(' | ');
+  const trainTxt=`${st.totalMin?fmtDur(st.totalMin):'0 min'}, ${st.totalKm||0} km, ${st.totalCal||0} kcal${st.avgHr?', FC moy '+st.avgHr+' (max '+(st.maxHr||'?')+')':''}${st.elev?', dénivelé +'+st.elev+' m':''}`;
   const btn=document.getElementById('revBtn'), ss=document.getElementById('revState');
   btn.disabled=true; ss.innerHTML='<span class="spinner"></span> bilan…';
   let ai=null;
   if(synced()){
     const sys="Tu es un coach bienveillant, concret et honnête (jamais flagorneur). Rédige le bilan hebdo d'un utilisateur qui perd du poids (objectif 90 kg) avec un genou fragile (chondropathie patellaire). 3-4 phrases à la 2e personne (tu), puis un point fort et UN focus concret pour la semaine prochaine. Réponds UNIQUEMENT en JSON: {\"summary\":\"...\",\"win\":\"...\",\"focus\":\"...\"}.";
-    const usr=`Stats: poids ${deltaTxt}, ${st.sess.length} séances, douleur genou moy ${painAvg}/2, humeur ${st.mood||'—'}. Auto-éval: ${qcmTxt}. Notes journal: ${jnotes.join(' // ')||'aucune'}. Ressentis séances: ${snotes.join(' // ')||'aucun'}.`;
+    const usr=`Stats: poids ${deltaTxt}, ${st.sess.length} séances, douleur genou moy ${painAvg}/2, humeur ${st.mood||'—'}. Entraînement (données montre): ${trainTxt}. Auto-éval: ${qcmTxt}. Notes journal: ${jnotes.join(' // ')||'aucune'}. Ressentis séances: ${snotes.join(' // ')||'aucun'}.`;
     try{
       const r=await fetch(cfg.syncUrl.replace(/\/$/,'')+'/ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.token},
         body:JSON.stringify({model:MODEL,max_tokens:600,system:sys,messages:[{role:'user',content:usr}]})});
@@ -1039,7 +1175,7 @@ function exportData(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='descente-data.json';a.click();
 }
-function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],reviews:[],genPrefs:'',shopping:null,exoCache:{},week:null,updatedAt:null};saveLocal();render();} }
+function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?')){state={profile:{height:HEIGHT_DEFAULT},weights:[],workouts:[],waists:[],journal:[],reviews:[],genPrefs:'',genBudget:'',shopping:null,exoCache:{},week:null,updatedAt:null};saveLocal();render();} }
 
 // ---------- init ----------
 (async()=>{
@@ -1049,8 +1185,9 @@ function resetData(){ if(confirm('Effacer toutes les données de cet appareil ?'
   document.getElementById('cDate').value=todayISO();
   document.getElementById('jDate').value=todayISO();
   document.getElementById('genKw').value=state.genPrefs||'';
+  document.getElementById('genBudget').value=state.genBudget||'';
   setBadge(); render();
-  await pull(); loadCfgInputs(); document.getElementById('genKw').value=state.genPrefs||''; render();
+  await pull(); loadCfgInputs(); document.getElementById('genKw').value=state.genPrefs||''; document.getElementById('genBudget').value=state.genBudget||''; render();
   if('serviceWorker' in navigator){ try{ await navigator.serviceWorker.register('service-worker.js'); }catch(e){} }
 })();
 </script>
