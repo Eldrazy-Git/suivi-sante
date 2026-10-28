@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "nom": "suivi-sante",
+  "description": "Utilitaire permettant de suivre mon poid, génère des menus et des séances d'exercices",
+  "type": "html",
+  "tags": [],
+  "favori": false,
+  "point_entree": "index.html",
+  "ouvrir_avec": "vscode",
+  "actions": [],
+  "outils_lies": []
+}
