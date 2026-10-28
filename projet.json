@@ -8,5 +8,6 @@
   "point_entree": "index.html",
   "ouvrir_avec": "vscode",
   "actions": [],
-  "outils_lies": []
+  "outils_lies": [],
+  "icone": "icon-512.png"
 }
